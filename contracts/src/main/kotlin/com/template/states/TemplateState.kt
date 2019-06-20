@@ -10,3 +10,4 @@ import net.corda.core.identity.AbstractParty
 // *********
 @BelongsToContract(TemplateContract::class)
 data class TemplateState(val data: String, override val participants: List<AbstractParty> = listOf()) : ContractState
+
