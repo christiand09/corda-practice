@@ -1,9 +1,7 @@
 package com.template.states
 
 import com.template.contracts.IOUContract
-import com.template.contracts.TemplateContract
 import net.corda.core.contracts.*
-import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import java.util.*
 
