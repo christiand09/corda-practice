@@ -15,9 +15,10 @@ data class RegisterState (val sender: Party,
                           val age: Int,
                           val gender: String,
                           val address: String,
-                          val isApproved: Boolean = false,
-                          val receivers: List<Party>,
+//                          val isApproved: Boolean = false,
+                          val receiver: Party,
                           override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState
 {
-    override val participants = receivers
+    override val participants: List<Party>
+        get() = listOf(sender, receiver)
 }
