@@ -9,7 +9,7 @@ class UserContract : Contract {
 
     companion object {
         @JvmStatic
-        val REGISTER_ID = "net.corda.training.contract.IOUContract"
+        val REGISTER_ID = "com.template.contracts.UserContract"
     }
 
     interface Commands : CommandData {

@@ -13,9 +13,8 @@ data class UserState(
         val age: Int,
         val gender: String,
         val address: String,
-        val isApproved: Boolean,
-        val unRegistered: Party,
-        val toRegister: Party,
+        val sender: Party,
+        val receiver: Party,
         override val linearId: UniqueIdentifier = UniqueIdentifier(),
-        override val participants: List<Party> = listOf(unRegistered,toRegister)
+        override val participants: List<Party> = listOf(sender,receiver)
 ) : LinearState

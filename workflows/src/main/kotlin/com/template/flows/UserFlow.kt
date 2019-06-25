@@ -17,33 +17,24 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class UserFlow (val state: UserState) : FlowLogic<SignedTransaction>() {
 
-
-
-    override val progressTracker = ProgressTracker(
-            GENERATING_TRANSACTION,
-            VERIFYING_TRANSACTION,
-            SIGNING_TRANSACTION,
-            NOTARIZE_TRANSACTION,
-            FINALISING_TRANSACTION)
+class UserFlow(val state: UserState): FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call(): SignedTransaction {
-        progressTracker.currentStep = GENERATING_TRANSACTION
         // Step 1. Get a reference to the notary service on our network and our key pair.
         // Note: ongoing work to support multiple notary identities is still in progress.
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
         // Step 2. Create a new issue command.
         // Remember that a command is a CommandData object and a list of CompositeKeys
-        val RegisterCommand = Command(UserContract.Commands.Register(), state.participants.map { it.owningKey })
+        val issueCommand = Command(UserContract.Commands.Register(), state.participants.map { it.owningKey })
 
         // Step 3. Create a new TransactionBuilder object.
         val builder = TransactionBuilder(notary = notary)
 
         // Step 4. Add the iou as an output state, as well as a command to the transaction builder.
         builder.addOutputState(state, UserContract.REGISTER_ID)
-        builder.addCommand(RegisterCommand)
+        builder.addCommand(issueCommand)
 
         // Step 5. Verify and sign it with our KeyPair.
         builder.verify(serviceHub)
@@ -55,28 +46,27 @@ class UserFlow (val state: UserState) : FlowLogic<SignedTransaction>() {
 
         // Step 7. Assuming no exceptions, we can now finalise the transaction.
         return subFlow(FinalityFlow(stx, sessions))
-
-
-
     }
+}
 
-    @InitiatedBy(UserFlow::class)
-    class UserFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+/**
+ * This is the flow which signs IOU issuances.
+ * The signing is handled by the [SignTransactionFlow].
+ */
+@InitiatedBy(UserFlow::class)
+class UserFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
 
-        @Suspendable
-        override fun call(): SignedTransaction {
-            val signedTransactionFlow = object : SignTransactionFlow(flowSession) {
-                override fun checkTransaction(stx: SignedTransaction) = requireThat {
-                    val output = stx.tx.outputs.single().data
-                    "This must be an IOU transaction" using (output is UserState)
-                }
+    @Suspendable
+    override fun call(): SignedTransaction {
+        val signedTransactionFlow = object : SignTransactionFlow(flowSession) {
+            override fun checkTransaction(stx: SignedTransaction) = requireThat {
+                val output = stx.tx.outputs.single().data
+                "This must be an IOU transaction" using (output is UserState)
             }
-
-            val txWeJustSignedId = subFlow(signedTransactionFlow)
-
-            return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
         }
+
+        val txWeJustSignedId = subFlow(signedTransactionFlow)
+
+        return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
     }
-
-
 }
