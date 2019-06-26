@@ -9,16 +9,13 @@ import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 
 @BelongsToContract(RegisterContract::class)
-data class RegisterState (val sender: Party,
-                          val firstName: String,
+data class RegisterState (val firstName: String,
                           val lastName: String,
                           val age: Int,
                           val gender: String,
                           val address: String,
-//                          val isApproved: Boolean = false,
+                          val sender: Party,
                           val receiver: Party,
+                          val approved: Boolean = false,
+                          override val participants: List<Party> = listOf(sender, receiver),
                           override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState
-{
-    override val participants: List<Party>
-        get() = listOf(sender, receiver)
-}

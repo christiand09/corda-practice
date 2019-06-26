@@ -39,20 +39,20 @@ class RegisterFlow (private val FirstName : String,
 
     @Suspendable
     override fun call(): SignedTransaction {
-
         progressTracker.currentStep = CREATING
         val notary = serviceHub.networkMapCache.notaryIdentities.single()
-        val outputState = RegisterState(ourIdentity, FirstName, LastName, Age, Gender, Address, counterParty)
-        val command = Command(RegisterContract.Commands.Register(), ourIdentity.owningKey)
+        val outputState = RegisterState(FirstName, LastName, Age, Gender, Address, ourIdentity, counterParty, false)
+        val registerCommand = Command(RegisterContract.Commands.Register(), ourIdentity.owningKey)
         val txBuilder = TransactionBuilder(notary = notary)
-                .addOutputState(outputState, RegisterContract.ID)
-                .addCommand(command)
+                .addOutputState(outputState, RegisterContract.REGISTER_ID)
+                .addCommand(registerCommand)
 
         progressTracker.currentStep = VERIFYING
         txBuilder.verify(services = serviceHub)
 
         progressTracker.currentStep = SIGNING
         val ptx = serviceHub.signInitialTransaction(txBuilder)
+
         val targetSession = initiateFlow(counterParty)
         val sessions = listOf(targetSession)
         val stx = subFlow(CollectSignaturesFlow(ptx, sessions))
@@ -63,7 +63,7 @@ class RegisterFlow (private val FirstName : String,
 }
 
 @InitiatedBy(RegisterFlow::class)
-class RegisterFlowResponder (val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>()
+class RegisterFlowResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>()
 {
     @Suspendable
     override fun call(): SignedTransaction
@@ -79,4 +79,3 @@ class RegisterFlowResponder (val counterpartySession: FlowSession) : FlowLogic<S
         return subFlow(ReceiveFinalityFlow(otherSideSession = counterpartySession, expectedTxId = signedTransaction.id))
     }
 }
-

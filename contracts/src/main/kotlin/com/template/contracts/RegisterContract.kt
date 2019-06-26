@@ -9,19 +9,18 @@ class RegisterContract : Contract
 {
     companion object
     {
-        const val ID = "com.template.contracts.RegisterContract"
-//        val REGISTER_CONTRACT_ID = RegisterContract::class.qualifiedName
+        @JvmStatic
+        val REGISTER_ID = "com.template.contracts.RegisterContract"
     }
 
     interface Commands : CommandData
     {
         class Register : TypeOnlyCommandData(), Commands
-        class Verify : TypeOnlyCommandData(), Commands
-        class Update : TypeOnlyCommandData(), Commands
+        class Verify: TypeOnlyCommandData(), Commands
     }
 
     override fun verify(tx: LedgerTransaction) {
-        val command = tx.commands.requireSingleCommand<Commands>()
+        val command = tx.commands.requireSingleCommand<RegisterContract.Commands>()
         when (command.value)
         {
             is Commands.Register -> requireThat {
@@ -30,13 +29,8 @@ class RegisterContract : Contract
                 val info = tx.outputsOfType<RegisterState>().single()
                 "Info must be signed by the sender" using (info.sender.owningKey == command.signers.single())
             }
-
             is Commands.Verify -> requireThat {
-                TODO("to be implemented")
-            }
 
-            is Commands.Update -> requireThat {
-                TODO("to be implemented")
             }
         }
     }
