@@ -14,13 +14,16 @@ class UserContract : Contract {
 
     interface Commands : CommandData {
         class Register : Commands
-
+        class Verify : Commands
     }
 
     override fun verify(tx: LedgerTransaction) {
         val command = tx.commands.requireSingleCommand<UserContract.Commands>()
         when (command.value) {
             is Commands.Register -> requireThat {
+
+            }
+            is Commands.Verify -> requireThat {
 
             }
             else -> requireThat {

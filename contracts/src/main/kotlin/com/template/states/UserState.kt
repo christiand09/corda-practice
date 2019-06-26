@@ -8,6 +8,7 @@ import net.corda.core.identity.Party
 
 @BelongsToContract(UserContract::class)
 data class UserState(
+
         val firstName: String,
         val lastName: String,
         val age: Int,
@@ -15,6 +16,8 @@ data class UserState(
         val address: String,
         val sender: Party,
         val receiver: Party,
+        val verify: Boolean,
+
         override val linearId: UniqueIdentifier = UniqueIdentifier(),
         override val participants: List<Party> = listOf(sender,receiver)
 ) : LinearState
