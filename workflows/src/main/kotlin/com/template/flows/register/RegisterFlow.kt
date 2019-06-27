@@ -1,4 +1,4 @@
-package com.template.flows
+package com.template.flows.register
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.RegisterContract
@@ -19,18 +19,20 @@ import net.corda.core.utilities.ProgressTracker.Step
 @StartableByRPC
 class RegisterFlow (private val FirstName : String,
                     private val LastName : String,
-                    private val Age : Int,
+                    private val Age : String,
                     private val Gender : String,
                     private val Address : String,
                     private val counterParty: Party) : FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
 
-    companion object {
+    companion object
+    {
         object CREATING : Step("Creating registration!")
         object SIGNING : Step("Signing registration!")
         object VERIFYING : Step("Verifying registration!")
-        object FINALISING : Step("Finalize registration!") {
+        object FINALISING : Step("Finalize registration!")
+        {
             override fun childProgressTracker() = FinalityFlow.tracker()
         }
 
@@ -38,10 +40,11 @@ class RegisterFlow (private val FirstName : String,
     }
 
     @Suspendable
-    override fun call(): SignedTransaction {
+    override fun call(): SignedTransaction
+    {
         progressTracker.currentStep = CREATING
         val notary = serviceHub.networkMapCache.notaryIdentities.single()
-        val outputState = RegisterState(FirstName, LastName, Age, Gender, Address, ourIdentity, counterParty, false)
+        val outputState = RegisterState(FirstName, LastName, Age, Gender, Address, ourIdentity, counterParty)
         val registerCommand = Command(RegisterContract.Commands.Register(), ourIdentity.owningKey)
         val txBuilder = TransactionBuilder(notary = notary)
                 .addOutputState(outputState, RegisterContract.REGISTER_ID)

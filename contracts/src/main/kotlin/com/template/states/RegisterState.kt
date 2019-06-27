@@ -9,13 +9,20 @@ import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 
 @BelongsToContract(RegisterContract::class)
-data class RegisterState (val firstName: String,
-                          val lastName: String,
-                          val age: Int,
-                          val gender: String,
-                          val address: String,
+data class RegisterState (val firstName: String?,
+                          val lastName: String?,
+                          val age: String?,
+                          val gender: String?,
+                          val address: String?,
                           val sender: Party,
                           val receiver: Party,
                           val approved: Boolean = false,
                           override val participants: List<Party> = listOf(sender, receiver),
                           override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState
+{
+    fun retainFirstName(oldFirstName: String?) = copy(firstName = oldFirstName)
+    fun retainLastName(oldLastName: String?) = copy(lastName = oldLastName)
+    fun retainAge(oldAge: String?) = copy(age = oldAge)
+    fun retainGender(oldGender: String?) = copy(gender = oldGender)
+    fun retainAddress(oldAddress: String?) = copy(address = oldAddress)
+}
