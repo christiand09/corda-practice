@@ -29,7 +29,7 @@ class RegisterUserFlow(val firstName: String,
         // Step 1. Get a reference to the notary service on our network and our key pair.
         // Note: ongoing work to support multiple notary identities is still in progress.
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
-        val MyState = MyState(firstName,lastName,age, gender,address, sender, receiver)
+        val MyState = MyState(firstName,lastName,age, gender,address, ourIdentity, receiver, false)
         // Step 2. Create a new issue command.
         // Remember that a command is a CommandData object and a list of CompositeKeys
         val issueCommand = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
@@ -44,6 +44,7 @@ class RegisterUserFlow(val firstName: String,
         // Step 5. Verify and sign it with our KeyPair.
         builder.verify(serviceHub)
         val ptx = serviceHub.signInitialTransaction(builder)
+
 
         val sessions = (MyState.participants - ourIdentity).map { initiateFlow(it) }.toSet()
         // Step 6. Collect the other party's signature using the SignTransactionFlow.

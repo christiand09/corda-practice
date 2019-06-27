@@ -33,11 +33,11 @@ class MyContract: Contract {
         val command = tx.commands.requireSingleCommand<MyContract.Commands>()
         when (command.value) {
             is Commands.Issue -> requireThat {
-                "No inputs should be consumed when issuing an IOU." using (tx.inputs.isEmpty())
-                "Only one output state should be created when issuing an IOU." using (tx.outputs.size == 1)
-                val iou = tx.outputStates.single() as MyState
+//                "No inputs should be consumed when issuing an IOU." using (tx.inputs.isEmpty())
+//                "Only one output state should be created when issuing an IOU." using (tx.outputs.size == 1)
+//                val iou = tx.outputStates.single() as MyState
 //                "A newly issued IOU must have a positive amount." using (iou.amount.quantity > 0)
-                "The sender and receiver cannot have the same identity." using (iou.sender != iou.receiver)
+//                "The sender and receiver cannot have the same identity." using (iou.sender != iou.receiver)
 //                "Both lender and borrower together only may sign IOU issue transaction." using
 //                        (command.signers.toSet() == iou.participants.map { it.owningKey }.toSet())
             }

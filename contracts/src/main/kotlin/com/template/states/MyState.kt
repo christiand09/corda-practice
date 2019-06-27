@@ -10,13 +10,16 @@ import net.corda.core.identity.Party
 
 @BelongsToContract(MyContract::class)
 
-data class MyState (val firstName: String,
+data class MyState (var firstName: String,
                     val lastName: String,
                     val age: Int,
                     val gender: String,
                     val address: String,
                     val sender: Party,
                     val receiver: Party,
-                    override  val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState{
+                    val approvals: Boolean,
+                    override  val linearId: UniqueIdentifier = UniqueIdentifier()
+                    ) : LinearState{
                     override val participants: List<Party> get() = listOf(sender, receiver)
+    fun newFirstName(newFirstName: String) = copy(firstName = newFirstName)
                     }
