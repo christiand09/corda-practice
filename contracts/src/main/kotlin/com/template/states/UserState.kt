@@ -20,4 +20,7 @@ data class UserState(
 
         override val linearId: UniqueIdentifier = UniqueIdentifier(),
         override val participants: List<Party> = listOf(sender,receiver)
-) : LinearState
+) : LinearState {
+
+    fun InAge(age: Int) = copy(age = age)
+}

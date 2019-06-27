@@ -9,19 +9,26 @@ import net.corda.core.contracts.Requirements.using
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
+import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
-import java.lang.IllegalArgumentException
-import java.security.acl.Owner
+import org.hibernate.Transaction
+
 
 @InitiatingFlow
 @StartableByRPC
-class VerifyFlow (
-                   private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>(){
+class UpdateFlow (
 
+        var firstName : String,
+        var lastName : String,
+        var age : Int,
+        var gender : String,
+        var address: String,
+        val linearId: UniqueIdentifier
+) : FlowLogic<SignedTransaction>() {
 
     override val progressTracker = ProgressTracker(
             GENERATING_TRANSACTION,
@@ -31,43 +38,42 @@ class VerifyFlow (
             FINALISING_TRANSACTION )
 
     @Suspendable
-    override fun call() : SignedTransaction {
+    override fun call(): SignedTransaction {
 
         progressTracker.currentStep = GENERATING_TRANSACTION
-        // verify notary
+        val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
-
-        //Search in servicehub in the map all the parties listed and change the string in a Party
-//        val OwnerRef = serviceHub.identityService.partiesFromName(OwnParty, false).singleOrNull()
-//                ?: throw IllegalArgumentException("No match found for Owner $OwnParty.")
-
-        // Initiator flow logic goes here.
         val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
         //get the information from KYCState
-        val Vault = serviceHub.vaultService.queryBy<UserState>(criteria).states.single()
+        val Vault = serviceHub.vaultService.queryBy<UserState>(criteria).states.first()
         val input = Vault.state.data
-        val receiver= Vault.state.data.receiver
-        val notary = Vault.state.notary
-        // belong to the transaction
-        val outputState = UserState(input.firstName,input.lastName,input.age,input.gender,input.address,input.sender,input.receiver,true  )
+        val receiver=Vault.state.data.receiver
+        val EMPTY = IntRange
+        when {
+            firstName== "" -> firstName = input.firstName
+            lastName== "" -> lastName = input.lastName
+            gender== "" -> gender = input.gender
+            address == "" -> address = input.address
+
+        }
+        when {
+
+        }
 
 
-//        val state = UserState(input.firstName,input.lastName,input.age,input.gender,input.address,input.sender,input.receiver,true )
-        // valid or invalid in contract
+        val outputState = UserState(firstName,lastName,age,gender,address,input.sender,input.receiver,input.verify,input.linearId)
+
         val cmd = Command(UserContract.Commands.Verify(),listOf(receiver.owningKey, ourIdentity.owningKey))
 
-        //add transaction Builder
-        val txBuilder = TransactionBuilder(notary= notary)
+        val txBuilder = TransactionBuilder(notary)
                 .addInputState(Vault)
                 .addOutputState(outputState, REGISTER_ID)
                 .addCommand(cmd)
 
         progressTracker.currentStep = VERIFYING_TRANSACTION
-        //verification of transaction
         txBuilder.verify(serviceHub)
 
         progressTracker.currentStep = SIGNING_TRANSACTION
-        //signed by the participants
         val signedTx = serviceHub.signInitialTransaction(txBuilder)
         val session= initiateFlow(receiver)
 
@@ -78,12 +84,8 @@ class VerifyFlow (
         val stx = subFlow(CollectSignaturesFlow(signedTx, listOf(session)))
         return subFlow(FinalityFlow(stx,session))
     }
-
-
-
-
-    @InitiatedBy(VerifyFlow::class)
-    class VerifyFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+    @InitiatedBy(UpdateFlow::class)
+    class UpdateFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
 
         @Suspendable
         override fun call(): SignedTransaction {
@@ -99,4 +101,6 @@ class VerifyFlow (
             return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
         }
     }
+
+
 }

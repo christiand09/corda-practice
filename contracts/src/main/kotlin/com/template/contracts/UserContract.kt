@@ -15,6 +15,7 @@ class UserContract : Contract {
     interface Commands : CommandData {
         class Register : Commands
         class Verify : Commands
+        class Update : Commands
     }
 
     override fun verify(tx: LedgerTransaction) {
@@ -24,6 +25,9 @@ class UserContract : Contract {
 
             }
             is Commands.Verify -> requireThat {
+
+            }
+            is Commands.Update -> requireThat {
 
             }
             else -> requireThat {
