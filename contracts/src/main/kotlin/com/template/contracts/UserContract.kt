@@ -13,6 +13,7 @@ class UserContract : Contract {
     interface Commands : CommandData {
         class Create : TypeOnlyCommandData(), Commands
         class Verify : TypeOnlyCommandData(), Commands
+        class Share : TypeOnlyCommandData(), Commands
     }
 
     override fun verify(tx: LedgerTransaction) {

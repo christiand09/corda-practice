@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Suspendable
 import com.google.common.collect.ImmutableList
 import com.template.flows.progressTracker.*
 import com.template.states.UserState
+import net.corda.core.contracts.LinearState
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
