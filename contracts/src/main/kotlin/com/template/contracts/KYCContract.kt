@@ -3,11 +3,11 @@ package com.template.contracts
 import net.corda.core.contracts.*
 import net.corda.core.transactions.LedgerTransaction
 
-class UserContract : Contract {
+class KYCContract : Contract {
 
     companion object {
         @JvmStatic
-        val USER_CONTRACT_ID = "com.template.contracts.UserContract"
+        val USER_CONTRACT_ID = "com.template.contracts.KYCContract"
     }
 
     interface Commands : CommandData {

@@ -1,6 +1,6 @@
 package com.template.flows
 
-import com.template.contracts.UserContract
+import com.template.contracts.KYCContract
 import com.template.flows.progressTracker.*
 import com.template.states.Name
 import com.template.states.UserState
@@ -34,9 +34,9 @@ class CreateKYCFlow(private val name: Name,
 
         val output = UserState(name, age, false, UniqueIdentifier(), listOf(ourIdentity))
 
-        val issueCommand =  Command(UserContract.Commands.Create(), output.participants.map { it.owningKey })
+        val issueCommand =  Command(KYCContract.Commands.Create(), output.participants.map { it.owningKey })
         val builder = TransactionBuilder(notary = notary)
-        builder.addOutputState(output, UserContract.USER_CONTRACT_ID)
+        builder.addOutputState(output, KYCContract.USER_CONTRACT_ID)
         builder.addCommand(issueCommand)
         return builder
     }

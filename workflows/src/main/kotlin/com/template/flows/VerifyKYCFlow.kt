@@ -1,6 +1,6 @@
 package com.template.flows
 
-import com.template.contracts.UserContract
+import com.template.contracts.KYCContract
 import com.template.flows.progressTracker.*
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.UniqueIdentifier
@@ -33,9 +33,9 @@ class VerifyKYCFlow(private val id : String) : UserBaseFlow() {
         val refStateData = refState.state.data
         val output = refStateData.verify()
 
-        val issueCommand = Command(UserContract.Commands.Verify(), output.participants.map { it.owningKey })
+        val issueCommand = Command(KYCContract.Commands.Verify(), output.participants.map { it.owningKey })
         val builder = TransactionBuilder(notary = notary)
-        builder.addOutputState(output, UserContract.USER_CONTRACT_ID)
+        builder.addOutputState(output, KYCContract.USER_CONTRACT_ID)
         builder.addCommand(issueCommand)
         return builder
     }
