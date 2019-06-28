@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.RegisterContract
 import com.template.states.RegisterState
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
@@ -11,6 +12,7 @@ import net.corda.core.flows.FlowException
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.ReceiveFinalityFlow
+import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
@@ -24,6 +26,7 @@ class UpdateFlow (private var FirstName: String,
                   private var Age: String,
                   private var Gender: String,
                   private var Address: String,
+                  private val counterParty: Party,
                   private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
@@ -44,13 +47,27 @@ class UpdateFlow (private var FirstName: String,
     override fun call(): SignedTransaction
     {
         progressTracker.currentStep = CREATING
-        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-        val vault = serviceHub.vaultService.queryBy<RegisterState>(criteria = criteria).states.single()
-        val input = vault.state.data
-        val notary = vault.state.notary
+        val updating = update()
 
-        /* Conditions */
-        // check that if the fields are empty, the data will retain its value
+        progressTracker.currentStep = VERIFYING
+        progressTracker.currentStep = SIGNING
+        val signedTransaction = verifyAndSign(transaction = updating)
+        val sessions = (outState().participants - ourIdentity).map { initiateFlow(it) }.toSet().toList()
+        val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = sessions)
+
+        progressTracker.currentStep = FINALISING
+        return verifyRegistration(transaction = transactionSignedByAllParties, sessions = sessions)
+    }
+
+    private fun inputStateRef(): StateAndRef<RegisterState> {
+        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
+        return serviceHub.vaultService.queryBy<RegisterState>(criteria = criteria).states.single()
+    }
+
+    private fun outState(): RegisterState
+    {
+        val input = inputStateRef().state.data
+
         if (FirstName == "")
             FirstName = input.firstName
         if (LastName == "")
@@ -62,29 +79,51 @@ class UpdateFlow (private var FirstName: String,
         if (Address == "")
             Address = input.address
 
-        // check that if the data is not verified, it will not update and throw a FlowException
         if (!input.approved)
             throw FlowException("The registrant must be approved before it can be update.")
 
-        val outputState = RegisterState(FirstName, LastName, Age.toInt(), Gender, Address, input.sender, input.receiver, true, linearId = linearId)
-        val updateCommand = Command(RegisterContract.Commands.Update(), listOf(ourIdentity.owningKey, input.receiver.owningKey))
-        val txBuilder = TransactionBuilder(notary = notary)
-                .addInputState(vault)
-                .addOutputState(outputState, RegisterContract.REGISTER_ID)
-                .addCommand(updateCommand)
-
-        progressTracker.currentStep = VERIFYING
-        txBuilder.verify(serviceHub)
-
-        progressTracker.currentStep = SIGNING
-        val ptx = serviceHub.signInitialTransaction(txBuilder)
-        val targetSession = initiateFlow(input.receiver)
-        val sessions = listOf(targetSession)
-        val stx = subFlow(CollectSignaturesFlow(ptx, sessions))
-
-        progressTracker.currentStep = FINALISING
-        return subFlow(FinalityFlow(stx, sessions))
+        return RegisterState(
+                FirstName,
+                LastName,
+                Age.toInt(),
+                Gender,
+                Address,
+                ourIdentity,
+                counterParty,
+                approved = true
+        )
     }
+
+    private fun update(): TransactionBuilder
+    {
+        val notary = inputStateRef().state.notary
+        val updateCommand =
+                Command(RegisterContract.Commands.Update(),
+                        listOf(ourIdentity.owningKey, counterParty.owningKey))
+        val builder = TransactionBuilder(notary = notary)
+        builder.addInputState(inputStateRef())
+        builder.addOutputState(state = outState(), contract = RegisterContract.REGISTER_ID)
+        builder.addCommand(updateCommand)
+        return builder
+    }
+
+    private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction
+    {
+        transaction.verify(serviceHub)
+        return serviceHub.signInitialTransaction(transaction)
+    }
+
+    @Suspendable
+    private fun collectSignature(
+            transaction: SignedTransaction,
+            sessions: List<FlowSession>
+    ): SignedTransaction = subFlow(CollectSignaturesFlow(transaction, sessions))
+
+    @Suspendable
+    private fun verifyRegistration(
+            transaction: SignedTransaction,
+            sessions: List<FlowSession>
+    ): SignedTransaction = subFlow(FinalityFlow(transaction, sessions))
 }
 
 @InitiatedBy(UpdateFlow::class)

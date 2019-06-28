@@ -27,11 +27,14 @@ class RegisterContract : Contract
             is Commands.Register -> requireThat {
                 "There can be no inputs when sending info to other parties" using (tx.inputs.isEmpty())
                 "There must be one output when the info is send." using (tx.outputs.size == 1)
+                "The output must be RegisterState" using (tx.getOutput(0) is RegisterState)
                 val info = tx.outputsOfType<RegisterState>().single()
                 "Info must be signed by the sender" using (info.sender.owningKey == command.signers.single())
             }
             is Commands.Verify -> requireThat {
-
+//                val rInput = tx.inputStates.single() as RegisterState
+//                val rOutput = tx.outputStates.single() as RegisterState
+//                "Transaction must have one output "
             }
             is Commands.Update -> requireThat {
 
