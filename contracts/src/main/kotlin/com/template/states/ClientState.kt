@@ -11,8 +11,9 @@ import net.corda.core.identity.Party
 data class ClientState(
         val name: String,
         val age: Int,
-        val sender: Party,
         val receiver: Party,
+        val sender: Party,
+        val verify: Boolean,
         override val linearId: UniqueIdentifier = UniqueIdentifier(),
-        override val participants: List<Party> = listOf(sender, receiver)
+        override val participants: List<Party> = listOf(sender,receiver)
 ) : LinearState

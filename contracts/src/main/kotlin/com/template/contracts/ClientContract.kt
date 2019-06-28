@@ -13,6 +13,7 @@ class ClientContract : Contract {
     }
     interface Commands : CommandData {
         class Register : Commands
+        class Verify   : Commands
     }
 
     override fun verify(tx: LedgerTransaction){
@@ -20,6 +21,11 @@ class ClientContract : Contract {
         requireThat {
             when(command.value){
                 is Commands.Register -> {
+
+
+                }
+                is Commands.Verify -> {
+
 
                 }
 
