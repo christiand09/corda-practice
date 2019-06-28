@@ -37,9 +37,4 @@ class VerfifyUserFlow(private val id : String) : UserBaseFlow() {
         builder.addCommand(issueCommand)
         return builder
     }
-
-
-
-
-
 }
