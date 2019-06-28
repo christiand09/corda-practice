@@ -19,7 +19,7 @@ import net.corda.core.utilities.ProgressTracker.Step
 @StartableByRPC
 class RegisterFlow (private val FirstName : String,
                     private val LastName : String,
-                    private val Age : String,
+                    private val Age : Int,
                     private val Gender : String,
                     private val Address : String,
                     private val counterParty: Party) : FlowLogic<SignedTransaction>()

@@ -19,11 +19,11 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class UpdateFlow (private var FirstName: String?,
-                  private var LastName: String?,
-                  private var Age: String?,
-                  private var Gender: String?,
-                  private var Address: String?,
+class UpdateFlow (private var FirstName: String,
+                  private var LastName: String,
+                  private var Age: String,
+                  private var Gender: String,
+                  private var Address: String,
                   private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
@@ -51,19 +51,22 @@ class UpdateFlow (private var FirstName: String?,
 
         /* Conditions */
         // check that if the fields are empty, the data will retain its value
-//        when {
-//            FirstName == null -> FirstName = input.retainFirstName(input.firstName).firstName
-//            LastName == null -> LastName = input.retainLastName(input.lastName).lastName
-//            Age == null -> Age = input.retainAge(input.age).age
-//            Gender == null -> Gender = input.retainGender(input.gender).gender
-//            Address == null -> Address = input.retainAddress(input.address).address
-//        }
+        if (FirstName == "")
+            FirstName = input.firstName
+        if (LastName == "")
+            LastName = input.lastName
+        if (Age == "")
+            Age = input.age.toString()
+        if (Gender == "")
+            Gender = input.gender
+        if (Address == "")
+            Address = input.address
 
         // check that if the data is not verified, it will not update and throw a FlowException
         if (!input.approved)
             throw FlowException("The registrant must be approved before it can be update.")
 
-        val outputState = RegisterState(FirstName, LastName, Age, Gender, Address, input.sender, input.receiver, true, linearId = linearId)
+        val outputState = RegisterState(FirstName, LastName, Age.toInt(), Gender, Address, input.sender, input.receiver, true, linearId = linearId)
         val updateCommand = Command(RegisterContract.Commands.Update(), listOf(ourIdentity.owningKey, input.receiver.owningKey))
         val txBuilder = TransactionBuilder(notary = notary)
                 .addInputState(vault)
