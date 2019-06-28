@@ -22,7 +22,7 @@ abstract class UserBaseFlow : FlowLogic<SignedTransaction>() {
         get() = serviceHub.networkMapCache.notaryIdentities.firstOrNull()
                 ?: throw FlowException("No available notary.")
 
-    fun getUserByLinearId(linearId: UniqueIdentifier): StateAndRef<UserState> {
+    fun getKYCByLinearId(linearId: UniqueIdentifier): StateAndRef<UserState> {
         val queryCriteria = QueryCriteria.LinearStateQueryCriteria(
                 null,
                 ImmutableList.of(linearId),
