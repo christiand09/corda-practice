@@ -14,7 +14,10 @@ data class UserState(
         val verified: Boolean,
         override val linearId: UniqueIdentifier,
         override val participants: List<AbstractParty>
-) : LinearState
+) : LinearState{
+
+    fun verify() = copy(verified = true)
+}
 
 @CordaSerializable
 data class Name(

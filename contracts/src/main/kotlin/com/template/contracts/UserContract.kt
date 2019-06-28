@@ -7,15 +7,16 @@ class UserContract : Contract {
 
     companion object {
         @JvmStatic
-        val IOU_CONTRACT_ID = "com.template.contracts.UserContract"
+        val USER_CONTRACT_ID = "com.template.contracts.UserContract"
     }
 
     interface Commands : CommandData {
         class Create : TypeOnlyCommandData(), Commands
+        class Verify : TypeOnlyCommandData(), Commands
     }
 
     override fun verify(tx: LedgerTransaction) {
-        val command = tx.commands.requireSingleCommand<UserContract.Commands>()
+        val command = tx.commands.requireSingleCommand<Commands>()
         when (command.value) {
             is Commands.Create -> requireThat {
 //                "No inputs should be consumed when issuing an IOU." using (tx.inputs.isEmpty())
@@ -26,6 +27,10 @@ class UserContract : Contract {
 //                "Both lender and borrower together only may sign IOU issue transaction." using
 //                        (command.signers.toSet() == iou.participants.map { it.owningKey }.toSet())
             }
+            is Commands.Verify-> requireThat {
+
+            }
+
         }
     }
 }
