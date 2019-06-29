@@ -7,7 +7,7 @@ class KYCContract : Contract {
 
     companion object {
         @JvmStatic
-        val USER_CONTRACT_ID = "com.template.contracts.KYCContract"
+        val KYC_CONTRACT_ID = "com.template.contracts.KYCContract"
     }
 
     interface Commands : CommandData {

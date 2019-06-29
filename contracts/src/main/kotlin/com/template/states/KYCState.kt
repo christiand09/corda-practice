@@ -8,7 +8,7 @@ import net.corda.core.identity.AbstractParty
 import net.corda.core.serialization.CordaSerializable
 
 @BelongsToContract(KYCContract::class)
-data class UserState(
+data class KYCState(
         val name: Name,
         val age: Int,
         val verified: Boolean,
@@ -17,6 +17,7 @@ data class UserState(
 ) : LinearState{
 
     fun verify() = copy(verified = true)
+    fun addParticipants(participants: List<AbstractParty>) = copy(participants = participants)
 }
 
 @CordaSerializable

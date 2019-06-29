@@ -3,8 +3,7 @@ package com.template.flows
 import co.paralleluniverse.fibers.Suspendable
 import com.google.common.collect.ImmutableList
 import com.template.flows.progressTracker.*
-import com.template.states.UserState
-import net.corda.core.contracts.LinearState
+import com.template.states.KYCState
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
@@ -23,13 +22,13 @@ abstract class UserBaseFlow : FlowLogic<SignedTransaction>() {
         get() = serviceHub.networkMapCache.notaryIdentities.firstOrNull()
                 ?: throw FlowException("No available notary.")
 
-    fun getKYCByLinearId(linearId: UniqueIdentifier): StateAndRef<UserState> {
+    fun getKYCByLinearId(linearId: UniqueIdentifier): StateAndRef<KYCState> {
         val queryCriteria = QueryCriteria.LinearStateQueryCriteria(
                 null,
                 ImmutableList.of(linearId),
                 Vault.StateStatus.UNCONSUMED, null)
 
-        return serviceHub.vaultService.queryBy<UserState>(queryCriteria).states.singleOrNull()
+        return serviceHub.vaultService.queryBy<KYCState>(queryCriteria).states.singleOrNull()
                 ?: throw FlowException("User with id $linearId not found.")
     }
 

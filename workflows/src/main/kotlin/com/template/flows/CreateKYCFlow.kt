@@ -2,8 +2,8 @@ package com.template.flows
 
 import com.template.contracts.KYCContract
 import com.template.flows.progressTracker.*
+import com.template.states.KYCState
 import com.template.states.Name
-import com.template.states.UserState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.InitiatingFlow
@@ -32,11 +32,11 @@ class CreateKYCFlow(private val name: Name,
         progressTracker.currentStep = BUILDING
         val notary = firstNotary
 
-        val output = UserState(name, age, false, UniqueIdentifier(), listOf(ourIdentity))
+        val output = KYCState(name, age, false, UniqueIdentifier(), listOf(ourIdentity))
 
         val issueCommand =  Command(KYCContract.Commands.Create(), output.participants.map { it.owningKey })
         val builder = TransactionBuilder(notary = notary)
-        builder.addOutputState(output, KYCContract.USER_CONTRACT_ID)
+        builder.addOutputState(output, KYCContract.KYC_CONTRACT_ID)
         builder.addCommand(issueCommand)
         return builder
     }
