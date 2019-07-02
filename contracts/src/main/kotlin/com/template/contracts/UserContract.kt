@@ -1,8 +1,12 @@
 package com.template.contracts
 
+import com.sun.xml.internal.ws.developer.MemberSubmissionAddressing
 import com.template.states.UserState
 import net.corda.core.contracts.*
+import net.corda.core.internal.LegalNameValidator
 import net.corda.core.transactions.LedgerTransaction
+import java.security.CodeSigner
+import java.security.PublicKey
 
 
 class UserContract : Contract {
@@ -19,39 +23,40 @@ class UserContract : Contract {
 
     override fun verify(tx: LedgerTransaction) {
         val command = tx.getCommand<CommandData>(0)
-
-        requireThat {
+        val setofsigners = command.signers.toSet()
 
             when (command.value) {
-
-                is Commands.Register -> {
-                    "No inputs should be consumed when issuing an IOU" using (tx.inputs.isEmpty())
-                    "Only one output state should be creating a record" using (tx.outputs.size == 1)
-                    "Output must be a TokenState" using (tx.getOutput(0) is UserState)
-                }
-                is Commands.Verify -> {
-                    val inputValidate = tx.inputsOfType<UserState>()
-                    val outputValidate = tx.outputsOfType<UserState>()
-                    val inputValidateState = inputValidate.single()
-                    val outputValidateState = outputValidate.single()
-                    "There can only be one output consumed when validating" using (outputValidate.size == 1)
-                    "There can only be one input consumed when validating " using(inputValidate.size == 1)
-                    "Input must be an UserState" using(tx.inputStates[0] is UserState)
-                    "Output must be an UserState" using(tx.outputStates[0] is UserState)
-                    "Input verified must be true" using(inputValidate.single().verify)
-                    "Output verified must be true" using (outputValidate.single().verify)
-                    "Firstname input and outputstate" using(inputValidateState.fullname == outputValidateState.fullname)
-                }
-                is Commands.Update ->
-                {
-
-                }
+                is Commands.Register -> verifyRegister(tx,setofsigners)
+                is Commands.Verify -> verifyVerification(tx,setofsigners)
+                is Commands.Update -> verifyUpdate(tx,setofsigners)
             }
-        }
     }
-    // Verification logic goes here.
 
+   private fun keyformParticipants(userstate:UserState):Set<PublicKey>
+   {
+        return userstate.participants.map { it.owningKey }.toSet()
+   }
+    private fun verifyRegister(tx: LedgerTransaction,signers:Set<PublicKey>) = requireThat{
+        "No inputs should be consumed when issuing an IOU" using (tx.inputs.isEmpty())
+        "Only one output state should be creating a record" using (tx.outputs.size == 1)
+        "Output must be a TokenState" using (tx.getOutput(0) is UserState)
+    }
+    private fun verifyVerification(tx: LedgerTransaction,signers:Set<PublicKey>) = requireThat {
 
-    // Used to indicate the transaction's intent.
+        val inputValidate = tx.inputsOfType<UserState>()
+        val outputValidate = tx.outputsOfType<UserState>()
+        "There can only be one output consumed when validating" using (outputValidate.size == 1)
+        "There can only be one input consumed when validating " using(inputValidate.size == 1)
+        "Input must be an UserState" using(tx.inputStates[0] is UserState)
+        "Output must be an UserState" using(tx.outputStates[0] is UserState)
+        "Output verified must be true" using (outputValidate.single().verify)
+    }
+    private fun verifyUpdate(tx: LedgerTransaction,signers:Set<PublicKey>) = requireThat {
+
+        val inputValidate = tx.inputsOfType<UserState>()
+        val input = inputValidate.single()
+        "Must be validated first before you can update" using(input.verify == true)
+        "Cannot be updated by the counterparty" using(input.receiver != input.sender)
+    }
 
 }

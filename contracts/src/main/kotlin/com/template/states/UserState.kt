@@ -18,10 +18,7 @@ data class UserState(val fullname: String,
                      override val participants: List<Party> = listOf(sender, receiver),
                      override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState
 {
-    fun newName(name: String) = copy(fullname = name)
-    fun newAge(edad:Int) = copy(age = edad)
-    fun newGender(gend: String) = copy(gender = gend)
-    fun newAddress(bahay: String) = copy(address = bahay)
+
 }
 
 
