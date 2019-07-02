@@ -35,6 +35,7 @@ class VerifyKYCFlow(private val id : String) : UserBaseFlow() {
 
         val verifyCommand = Command(KYCContract.Commands.Verify(), output.participants.map { it.owningKey })
         val builder = TransactionBuilder(notary = notary)
+        builder.addInputState(refState)
         builder.addOutputState(output, KYCContract.KYC_CONTRACT_ID)
         builder.addCommand(verifyCommand)
         return builder
