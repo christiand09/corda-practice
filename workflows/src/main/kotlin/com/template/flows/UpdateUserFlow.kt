@@ -19,10 +19,10 @@ import net.corda.core.utilities.ProgressTracker
 @StartableByRPC
 class UpdateUserFlow( private var firstName: String,
                       private var lastName: String,
-                      private val age: Int,
+                      private var age: String ,
                       private var gender: String,
                       private var address: String,
-//                      private val receiver: Party,
+//                     private val receiver: Party,
                       private val linearId: UniqueIdentifier = UniqueIdentifier()
                     ): FlowLogic<SignedTransaction>(){
 
@@ -46,19 +46,23 @@ class UpdateUserFlow( private var firstName: String,
         val receiver= vault.state.data.receiver
 
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
-        val userState = MyState(firstName, lastName, age, gender, address, ourIdentity, input.receiver, input.approvals, input.linearId)
+        val userState = MyState(firstName, lastName, age, gender, address, ourIdentity, input.receiver, input.approvals, input.participants, input.linearId)
 
-//       when {
-//           firstName == "" -> firstName = input.firstName
-//           lastName == "" -> lastName = input.lastName
-//           gender == "" -> gender = input.gender
-//           address == "" -> address = input.address
-//       }
-        if (userState.firstName == ""){
-            firstName = input.firstName
+       when {
+           userState.firstName == "" -> userState.firstName = input.firstName
+       }
+        when {
+            userState.lastName == "" -> userState.lastName = input.lastName
         }
-
-
+        when {
+            userState.gender == "" -> userState.gender = input.gender
+        }
+        when {
+            userState.address == "" -> userState.address = input.address
+        }
+        when {
+            userState.age == "" -> userState.age = input.age
+        }
 
         val cmd = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
         val txBuilder = TransactionBuilder(notary)
@@ -66,24 +70,18 @@ class UpdateUserFlow( private var firstName: String,
                 .addOutputState(userState,MyContract.IOU_CONTRACT_ID)
                 .addCommand(cmd)
         progressTracker.currentStep = GENERATING_TRANSACTION
-
         /* Step 2 - Verify the transaction */
         txBuilder.verify(serviceHub)
         progressTracker.currentStep = VERIFYING_TRANSACTION
-
         /* Step 3 - Sign the transaction */
         val signedTx = serviceHub.signInitialTransaction(txBuilder)
         val session= initiateFlow(receiver)
         progressTracker.currentStep = SIGNING_TRANSACTION
-
-
-
         /* Step 4 and 5 - Notarize then Record the transaction */
         progressTracker.currentStep = NOTARIZE_TRANSACTION
         progressTracker.currentStep = FINALISING_TRANSACTION
         val stx = subFlow(CollectSignaturesFlow(signedTx, listOf(session)))
         return subFlow(FinalityFlow(stx, session))
-
     }
 
 

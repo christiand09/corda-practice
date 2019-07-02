@@ -7,6 +7,7 @@ import net.corda.core.contracts.Command
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
+import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
@@ -17,7 +18,9 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class VerifyUserFlow (private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>(){
+class VerifyUserFlow (
+                      private val receiver: Party,
+                      private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>(){
 
     override val progressTracker = ProgressTracker(
             GENERATING_TRANSACTION,
@@ -34,9 +37,9 @@ class VerifyUserFlow (private val linearId: UniqueIdentifier) : FlowLogic<Signed
 
         val vault = serviceHub.vaultService.queryBy<MyState>(criteria).states.single()
         val input = vault.state.data
-        val receiver= vault.state.data.receiver
+
         val notary = vault.state.notary
-        val outputState = MyState(input.firstName,input.lastName,input.age,input.gender,input.address,input.sender,input.receiver,true  )
+        val outputState = MyState(input.firstName,input.lastName,input.age,input.gender,input.address,input.sender, receiver,true  )
 
 
 
