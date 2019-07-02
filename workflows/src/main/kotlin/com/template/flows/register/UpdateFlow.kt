@@ -2,11 +2,12 @@ package com.template.flows.register
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.RegisterContract
+import com.template.states.Name
 import com.template.states.RegisterState
+import net.corda.core.contracts.*
 import net.corda.core.contracts.Command
-import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.contracts.requireThat
+import net.corda.core.contracts.StateAndContract
 import net.corda.core.flows.*
 import net.corda.core.flows.FlowException
 import net.corda.core.flows.CollectSignaturesFlow
@@ -21,11 +22,7 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class UpdateFlow (private var FirstName: String,
-                  private var LastName: String,
-                  private var Age: String,
-                  private var Gender: String,
-                  private var Address: String,
+class UpdateFlow (private var name: Name,
                   private val counterParty: Party,
                   private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
 {
@@ -56,6 +53,7 @@ class UpdateFlow (private var FirstName: String,
         val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = sessions)
 
         progressTracker.currentStep = FINALISING
+//        subFlow(RegisterFlow(FirstName, LastName, Age.toInt(), Gender, Address))
         return verifyRegistration(transaction = transactionSignedByAllParties, sessions = sessions)
     }
 
@@ -68,43 +66,37 @@ class UpdateFlow (private var FirstName: String,
     {
         val input = inputStateRef().state.data
 
-        if (FirstName == "")
-            FirstName = input.firstName
-        if (LastName == "")
-            LastName = input.lastName
-        if (Age == "")
-            Age = input.age.toString()
-        if (Gender == "")
-            Gender = input.gender
-        if (Address == "")
-            Address = input.address
+        if (name.firstname == "")
+            name.firstname = input.name.firstname
+        if (name.lastname == "")
+            name.lastname = input.name.lastname
+        if (name.age == "")
+            name.age = input.name.age
+        if (name.gender == "")
+            name.gender = input.name.gender
+        if (name.address == "")
+            name.address = input.name.address
 
         if (!input.approved)
             throw FlowException("The registrant must be approved before it can be update.")
 
         return RegisterState(
-                FirstName,
-                LastName,
-                Age.toInt(),
-                Gender,
-                Address,
+                name,
                 ourIdentity,
                 counterParty,
-                approved = true
+                approved = true,
+                linearId = linearId
         )
     }
 
     private fun update(): TransactionBuilder
     {
+        val contract = RegisterContract.REGISTER_ID
         val notary = inputStateRef().state.notary
         val updateCommand =
                 Command(RegisterContract.Commands.Update(),
-                        listOf(ourIdentity.owningKey, counterParty.owningKey))
-        val builder = TransactionBuilder(notary = notary)
-        builder.addInputState(inputStateRef())
-        builder.addOutputState(state = outState(), contract = RegisterContract.REGISTER_ID)
-        builder.addCommand(updateCommand)
-        return builder
+                        outState().participants.map { it.owningKey })
+        return TransactionBuilder(notary = notary).withItems(inputStateRef(), StateAndContract(outState(), contract), updateCommand)
     }
 
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction

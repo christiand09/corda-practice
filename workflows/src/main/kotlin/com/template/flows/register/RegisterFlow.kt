@@ -2,6 +2,7 @@ package com.template.flows.register
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.RegisterContract
+import com.template.states.Name
 import com.template.states.RegisterState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.requireThat
@@ -9,21 +10,15 @@ import net.corda.core.flows.*
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.ReceiveFinalityFlow
-import net.corda.core.identity.Party
+import net.corda.core.serialization.CordaSerializable
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.ProgressTracker.Step
-import sun.reflect.generics.visitor.Reifier
-import java.net.Inet4Address
 
 @InitiatingFlow
 @StartableByRPC
-class RegisterFlow (private val FirstName : String,
-                    private val LastName : String,
-                    private val Age : Int,
-                    private val Gender : String,
-                    private val Address : String) : FlowLogic<SignedTransaction>()
+class RegisterFlow (private val name: Name) : FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
 
@@ -59,11 +54,7 @@ class RegisterFlow (private val FirstName : String,
     private fun outState(): RegisterState
     {
         return RegisterState(
-                FirstName,
-                LastName,
-                Age,
-                Gender,
-                Address,
+                name,
                 ourIdentity,
                 ourIdentity
         )
@@ -115,3 +106,4 @@ class RegisterFlowResponder(val counterPartySession: FlowSession) : FlowLogic<Si
         return subFlow(ReceiveFinalityFlow(otherSideSession = counterPartySession, expectedTxId = signedTransaction.id))
     }
 }
+

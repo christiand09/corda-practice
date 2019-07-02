@@ -20,7 +20,8 @@ class RegisterContract : Contract
         class Update: TypeOnlyCommandData(), Commands
     }
 
-    override fun verify(tx: LedgerTransaction) {
+    override fun verify(tx: LedgerTransaction)
+    {
         val command = tx.commands.requireSingleCommand<Commands>()
         when (command.value)
         {
@@ -32,9 +33,7 @@ class RegisterContract : Contract
                 "Info must be signed by the sender" using (info.sender.owningKey == command.signers.single())
             }
             is Commands.Verify -> requireThat {
-//                val rInput = tx.inputStates.single() as RegisterState
-//                val rOutput = tx.outputStates.single() as RegisterState
-//                "Transaction must have one output "
+
             }
             is Commands.Update -> requireThat {
 
