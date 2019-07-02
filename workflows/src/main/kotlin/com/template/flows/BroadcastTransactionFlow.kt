@@ -18,9 +18,10 @@ class BroadcastTransactionFlow(
     companion object {
         object STARTING : Step("Starting Broadcast.")
         object CREATING :  Step("Creating Sessions.")
-        object SIGNING :  Step("Start subFlow(SendTransaction).")
+        object SENDING :  Step("Start subFlow(SendTransaction).")
+        object RECEIVING :  Step("Start subFlow(ReceiveTransaction).")
 
-        fun tracker() = ProgressTracker(STARTING, CREATING, SIGNING)
+        fun tracker() = ProgressTracker(STARTING, CREATING, SENDING, RECEIVING)
     }
     override val progressTracker: ProgressTracker = tracker()
 
@@ -32,7 +33,7 @@ class BroadcastTransactionFlow(
         for (recipient in recipients) {
             progressTracker.currentStep = CREATING
             val session = initiateFlow(recipient)
-            progressTracker.currentStep = SIGNING
+            progressTracker.currentStep = SENDING
             subFlow(SendTransactionFlow(session, stx))
         }
     }
@@ -45,6 +46,7 @@ class BroadcastTransactionResponder(private val session: FlowSession) : FlowLogi
 
     @Suspendable
     override fun call() {
+        progressTracker.currentStep = BroadcastTransactionFlow.Companion.RECEIVING
         subFlow(ReceiveTransactionFlow(session, statesToRecord = StatesToRecord.ALL_VISIBLE))
     }
 }

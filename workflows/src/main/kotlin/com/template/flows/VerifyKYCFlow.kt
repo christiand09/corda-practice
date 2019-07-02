@@ -21,7 +21,7 @@ class VerifyKYCFlow(private val id : String) : UserBaseFlow() {
         progressTracker.currentStep = INITIALIZING
         val transaction = transaction()
         val signedTransaction = verifyAndSign(transaction)
-        val parties = (serviceHub.networkMapCache.notaryIdentities - ourIdentity)
+        val parties = (serviceHub.networkMapCache.notaryIdentities)
         subFlow(BroadcastTransactionFlow(signedTransaction, parties))
         return recordTransaction(signedTransaction, emptyList())
     }
