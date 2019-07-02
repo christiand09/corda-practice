@@ -16,11 +16,8 @@ data class UserState(
         val address: String,
         val sender: Party,
         val receiver: Party,
-        val verify: Boolean,
+        val verify: Boolean = false,
 
         override val linearId: UniqueIdentifier = UniqueIdentifier(),
         override val participants: List<Party> = listOf(sender,receiver)
-) : LinearState {
-
-    fun InAge(age: Int) = copy(age = age)
-}
+) : LinearState

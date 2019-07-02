@@ -14,6 +14,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
+import sun.invoke.empty.Empty
 
 @InitiatingFlow
 @StartableByRPC
@@ -25,9 +26,7 @@ class UserFlow (
                  val lastName : String,
                  val age : Int,
                  val gender : String,
-                 val address: String,
-                 val sender: Party,
-                 val receiver: Party
+                 val address: String
                  ) : FlowLogic<SignedTransaction>() {
 
     override val progressTracker = ProgressTracker(
@@ -39,36 +38,83 @@ class UserFlow (
 
     @Suspendable
     override fun call() : SignedTransaction {
-
         progressTracker.currentStep = GENERATING_TRANSACTION
-        // Initiator flow logic goes here.
-        // verify notary
-        val notary = serviceHub.networkMapCache.notaryIdentities.first()
-
-        // belong to the transaction
-        val outputState = UserState(firstName,lastName,age,gender,address,sender,receiver,false)
-
-        // valid or invalid in contract
-        val cmd = Command(UserContract.Commands.Register(),ourIdentity.owningKey)
-
-        //add transaction Builder
-        val txBuilder = TransactionBuilder(notary)
-                .addOutputState(outputState, UserContract.REGISTER_ID)
-                .addCommand(cmd)
-
+        val userRegister = userRegister(outputState())
         progressTracker.currentStep = VERIFYING_TRANSACTION
-        //verification of transaction
-        txBuilder.verify(serviceHub)
-
         progressTracker.currentStep = SIGNING_TRANSACTION
-        //signed by the participants
-        val signedTx = serviceHub.signInitialTransaction(txBuilder)
-        val session= initiateFlow(receiver)
+        val signedTransaction = verifyAndSign(transaction = userRegister)
+        val sessions = emptyList<FlowSession>() // empty because the owner's signature is just needed
+        val transactionSignedByParties = collectSignature(transaction = signedTransaction, sessions = sessions)
+
 
         progressTracker.currentStep = FINALISING_TRANSACTION
-        //finalizing signature
-        return subFlow(FinalityFlow(signedTx,session))
+        return recordTransaction(transaction = transactionSignedByParties, sessions = sessions)
     }
+
+
+    private fun outputState(): UserState{
+        return UserState(firstName,lastName,age,gender,address,ourIdentity,ourIdentity)
+
+    }
+    private fun userRegister(state: UserState): TransactionBuilder{
+        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+        val cmd = Command(UserContract.Commands.Register(),ourIdentity.owningKey)
+        val txBuilder = TransactionBuilder(notary)
+               .addOutputState(state, UserContract.REGISTER_ID)
+               .addCommand(cmd)
+        return txBuilder
+    }
+
+    private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
+        transaction.verify(serviceHub)
+
+        return serviceHub.signInitialTransaction(transaction)
+    }
+
+    @Suspendable
+    private fun collectSignature(
+            transaction: SignedTransaction,
+            sessions: List<FlowSession>
+    ): SignedTransaction = subFlow(CollectSignaturesFlow(transaction, sessions))
+
+    @Suspendable
+
+    private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
+            subFlow(FinalityFlow(transaction, sessions))
+
+}
+//        progressTracker.currentStep = GENERATING_TRANSACTION
+//        // Initiator flow logic goes here.
+//        // verify notary
+//        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+//
+//        // belong to the transaction
+//        val outputState = UserState(firstName,lastName,age,gender,address,sender,receiver,false)
+//
+//        // valid or invalid in contract
+//        val cmd = Command(UserContract.Commands.Register(),ourIdentity.owningKey)
+//
+//        //add transaction Builder
+//        val txBuilder = TransactionBuilder(notary)
+//                .addOutputState(outputState, UserContract.REGISTER_ID)
+//                .addCommand(cmd)
+//
+//        progressTracker.currentStep = VERIFYING_TRANSACTION
+//        //verification of transaction
+//        txBuilder.verify(serviceHub)
+//
+//        progressTracker.currentStep = SIGNING_TRANSACTION
+//        //signed by the participants
+//        val signedTx = serviceHub.signInitialTransaction(txBuilder)
+//        val session= initiateFlow(receiver)
+//
+//        progressTracker.currentStep = FINALISING_TRANSACTION
+//        //finalizing signature
+//        return subFlow(FinalityFlow(signedTx,session))
+//    }
+
+
+
 
 
     @InitiatedBy(UserFlow::class)
@@ -90,4 +136,3 @@ class UserFlow (
     }
 
 
-}
