@@ -16,12 +16,11 @@ import net.corda.core.flows.ReceiveFinalityFlow
 import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
-import net.corda.core.serialization.CordaSerializable
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
-import net.corda.core.utilities.UntrustworthyData
 import net.corda.core.utilities.unwrap
+
 
 @InitiatingFlow
 @StartableByRPC
@@ -53,17 +52,10 @@ class UpdateRegisterFlow (private var name: Name,
         progressTracker.currentStep = SIGNING
         val signedTransaction = verifyAndSign(transaction = updating)
         val sessions = initiateFlow(counterParty)
+        sessions.send(name)
         val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = listOf(sessions))
 
         progressTracker.currentStep = FINALISING
-        sessions.send(Name(
-                name.firstname,
-                name.lastname,
-                name.age,
-                name.gender,
-                name.address
-            )
-        )
         return verifyRegistration(transaction = transactionSignedByAllParties, sessions = listOf(sessions))
     }
 
@@ -141,9 +133,10 @@ class UpdateRegisterFlowResponder (val flowSession: FlowSession) : FlowLogic<Sig
                 "This must be an update transaction." using (output is RegisterState)
             }
         }
-        val payload = flowSession.receive(UpdateRegisterFlow::class.java).unwrap { it }
+        val payload = flowSession.receive(Name::class.java).unwrap { it }
         val signedTransaction = subFlow(signedTransactionFlow)
-        subFlow(payload)
+        subFlow(RegisterFlow(payload))
         return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = signedTransaction.id))
     }
 }
+
