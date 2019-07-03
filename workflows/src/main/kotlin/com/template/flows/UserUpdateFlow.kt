@@ -12,19 +12,16 @@ import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
+import com.template.states.UserDetails
 
 @InitiatingFlow
 @StartableByRPC
-class UserUpdateFlow (private var fullName: String,
-                      private var Age: String,
-                      private var Gender: String,
-                      private var Address: String,
+class UserUpdateFlow (private var name: UserDetails,
                       private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
 {
     @Suspendable
     override fun call(): SignedTransaction
     {
-
         val update = update()
         val signedTransaction = verifyandsign(update)
         val session = (updatestate().participants - ourIdentity).map { initiateFlow(it) }.toSet().toList()
@@ -35,11 +32,11 @@ class UserUpdateFlow (private var fullName: String,
     private fun updatestate():UserState
     {
         val input = inputstateref().state.data
-        if (fullName == "") fullName = input.fullname
-        if (Age == "") Age = input.age.toString()
-        if (Gender == "") Gender = input.gender
-        if (Address == "") Address = input.address
-        return UserState(fullName, Age.toInt(), Gender, Address, ourIdentity, input.receiver, input.verify, linearId = linearId)
+        if (name.fullname == "") name.fullname = input.name.fullname
+        if (name.age == "") name.age = input.name.age
+        if (name.gender == "") name.gender = input.name.gender
+        if (name.address == "") name.address = input.name.address
+        return UserState(name, ourIdentity, input.receiver, input.verify, linearId = linearId)
     }
     private fun inputstateref(): StateAndRef<UserState>
     {

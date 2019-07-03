@@ -9,13 +9,11 @@ import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
+import com.template.states.UserDetails
 
 @InitiatingFlow
 @StartableByRPC
-class UserRegisterFlow(private val Fullname: String,
-                       private val Age:Int,
-                       private val Gender:String,
-                       private val Address: String):FlowLogic<SignedTransaction>()
+class UserRegisterFlow(private val name: UserDetails):FlowLogic<SignedTransaction>()
 {
     @Suspendable
     override fun call():SignedTransaction
@@ -28,7 +26,7 @@ class UserRegisterFlow(private val Fullname: String,
     }
     private fun registerstate(): UserState
     {
-        return UserState(Fullname,Age,Gender,Address,ourIdentity,ourIdentity,false, listOf(ourIdentity))
+        return UserState(name,ourIdentity,ourIdentity)
     }
     private fun transaction(state: UserState): TransactionBuilder
     {

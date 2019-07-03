@@ -4,7 +4,6 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.UserContract
 import com.template.states.UserState
 import net.corda.core.contracts.Command
-import net.corda.core.contracts.Requirements.using
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
@@ -14,10 +13,8 @@ import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
-import net.corda.core.utilities.ProgressTracker.Step
 import net.corda.core.utilities.ProgressTracker
-import javax.jws.soap.SOAPBinding
-import kotlin.math.sign
+import net.corda.core.utilities.ProgressTracker.Step
 
 @InitiatingFlow
 @StartableByRPC
@@ -38,24 +35,6 @@ class UserVerifyFlow(private val id: UniqueIdentifier, private val counterparty:
     }
     @Suspendable
     override fun call(): SignedTransaction {
-//        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(id))
-//        val inputState = serviceHub.vaultService.queryBy<UserState>(criteria).states.single()
-//        val input = inputState.state.data
-        //input.
-//        val notary = inputState.state.notary
-//        val userState = UserState(input.fullname, input.age, input.gender, input.address, input.sender, counterparty, true,linearId = id )
-//        val cmd = Command(UserContract.Commands.Verify(), listOf(counterparty.owningKey,ourIdentity.owningKey))
-//        val txBuilder = TransactionBuilder(notary = notary)
-//                .addInputState(inputState)
-//                .addOutputState(userState, UserContract.ID_Contracts)
-//                .addCommand(cmd)
-//        txBuilder.verify(serviceHub)
-//        val signedtx = serviceHub.signInitialTransaction(txBuilder)
-//        val session = initiateFlow(counterparty)
-//
-//        val ssss = subFlow(CollectSignaturesFlow(signedtx, listOf(session)))
-//
-//        return subFlow(FinalityFlow(ssss, session))
         progressTracker.currentStep = CREATING
         val verify = verify()
         progressTracker.currentStep = VERIFYING
@@ -69,7 +48,7 @@ class UserVerifyFlow(private val id: UniqueIdentifier, private val counterparty:
     private fun verifystate():UserState
     {
         val input = inputStateref().state.data
-        return UserState(input.fullname, input.age, input.gender, input.address, ourIdentity, counterparty, verify = true,linearId = id)
+        return UserState(input.name, ourIdentity, counterparty, verify = true,linearId = id)
     }
     private fun verify():TransactionBuilder
     {
