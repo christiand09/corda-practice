@@ -52,8 +52,9 @@ class VerifyUserFlow (
         val notary = inputStateRef().state.notary
 //        val outputState = MyState(input.firstName, input.lastName, input.age, input.gender, input.address, sender = ourIdentity,receiver = receiver, true,approvals = true,linearId = input.linearId)
 //       val cmd = Command(MyContract.Commands.Issue(), listOf(receiver.owningKey, ourIdentity.owningKey))
-        val cmd = Command(MyContract.Commands.Issue(), outputState().participants.map { it.owningKey })
+        val cmd = Command(MyContract.Commands.Verify(), outputState().participants.map { it.owningKey })
         val builder = TransactionBuilder(notary = notary)
+        .addInputState(inputStateRef())
                 .addOutputState(outputState(), MyContract.IOU_CONTRACT_ID)
                 .addCommand(cmd)
         return builder

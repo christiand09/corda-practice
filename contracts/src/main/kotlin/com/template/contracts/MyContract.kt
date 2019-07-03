@@ -21,7 +21,7 @@ class MyContract: Contract {
      */
     interface Commands : CommandData {
         class Issue : TypeOnlyCommandData(), Commands
-//        class Transfer : TypeOnlyCommandData(), Commands
+        class Verify : TypeOnlyCommandData(), Commands
 //        class Settle : TypeOnlyCommandData(), Commands
     }
 
@@ -34,6 +34,15 @@ class MyContract: Contract {
         when (command.value) {
             is Commands.Issue -> requireThat {
 //                "No inputs should be consumed when issuing an IOU." using (tx.inputs.isEmpty())
+//                "Only one output state should be created when issuing an IOU." using (tx.outputs.size == 1)
+//                val iou = tx.outputStates.single() as MyState
+//                "A newly issued IOU must have a positive amount." using (iou.amount.quantity > 0)
+//                "The sender and receiver cannot have the same identity." using (iou.sender != iou.receiver)
+//                "Both lender and borrower together only may sign IOU issue transaction." using
+//                        (command.signers.toSet() == iou.participants.map { it.owningKey }.toSet())
+            }
+            is Commands.Verify -> requireThat {
+                //                "No inputs should be consumed when issuing an IOU." using (tx.inputs.isEmpty())
 //                "Only one output state should be created when issuing an IOU." using (tx.outputs.size == 1)
 //                val iou = tx.outputStates.single() as MyState
 //                "A newly issued IOU must have a positive amount." using (iou.amount.quantity > 0)

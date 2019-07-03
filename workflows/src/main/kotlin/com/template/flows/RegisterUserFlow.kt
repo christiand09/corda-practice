@@ -41,7 +41,8 @@ class RegisterUserFlow(val firstName: String,
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
         val MyState = MyState(firstName,lastName,age, gender,address, ourIdentity, ourIdentity)
         val issueCommand = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
-        val builder = TransactionBuilder(notary = notary)
+        val builder = TransactionBuilder(notary = notary )
+
         builder.addOutputState(MyState, MyContract.IOU_CONTRACT_ID)
         builder.addCommand(issueCommand)
         return builder

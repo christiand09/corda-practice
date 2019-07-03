@@ -14,7 +14,7 @@ import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
-import net.corda.core.utilities.ProgressTracker
+
 
 @InitiatingFlow
 @StartableByRPC
@@ -26,15 +26,6 @@ class UpdateUserFlow( private var firstName: String,
                      private val receiver: Party,
                       private val linearId: UniqueIdentifier = UniqueIdentifier()
                     ): FlowLogic<SignedTransaction>(){
-
-    /* Declare Transaction steps*/
-    override val progressTracker = ProgressTracker(
-            GENERATING_TRANSACTION,
-            SIGNING_TRANSACTION,
-            VERIFYING_TRANSACTION,
-            NOTARIZE_TRANSACTION,
-            FINALISING_TRANSACTION
-    )
 
     @Suspendable
     override fun call():SignedTransaction {
@@ -63,19 +54,19 @@ class UpdateUserFlow( private var firstName: String,
 //        val userState = MyState(firstName, lastName, age, gender, address, ourIdentity, input.receiver, input.approvals, input.participants, input.linearId)
 
         when {
-            outputState().firstName == "" -> outputState().firstName = inputStateRef().state.data.firstName
+            firstName == "" -> firstName = inputStateRef().state.data.firstName
         }
         when {
-            outputState().lastName == "" -> outputState().lastName = inputStateRef().state.data.lastName
+            lastName == "" -> lastName = inputStateRef().state.data.lastName
         }
         when {
-            outputState().gender == "" -> outputState().gender = inputStateRef().state.data.gender
+            gender == "" -> gender = inputStateRef().state.data.gender
         }
         when {
-            outputState().address == "" -> outputState().address = inputStateRef().state.data.address
+            address == "" -> address = inputStateRef().state.data.address
         }
         when {
-            outputState().age == "" -> outputState().age = inputStateRef().state.data.age
+            age == "" -> age = inputStateRef().state.data.age
         }
 
         val cmd = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
@@ -83,7 +74,7 @@ class UpdateUserFlow( private var firstName: String,
                 .addInputState(inputStateRef())
                 .addOutputState(outputState(),MyContract.IOU_CONTRACT_ID)
                 .addCommand(cmd)
-        progressTracker.currentStep = GENERATING_TRANSACTION
+
         return builder
     }
 
