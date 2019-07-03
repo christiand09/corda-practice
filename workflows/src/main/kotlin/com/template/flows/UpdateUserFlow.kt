@@ -89,10 +89,7 @@ class UpdateUserFlow( private var firstName: String,
 
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
         transaction.verify(serviceHub)
-        progressTracker.currentStep = VERIFYING_TRANSACTION
-        progressTracker.currentStep = SIGNING_TRANSACTION
-        progressTracker.currentStep = NOTARIZE_TRANSACTION
-        progressTracker.currentStep = FINALISING_TRANSACTION
+
         return serviceHub.signInitialTransaction(transaction)
     }
 
@@ -106,8 +103,6 @@ class UpdateUserFlow( private var firstName: String,
     private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
             subFlow(FinalityFlow(transaction, sessions))
 }
-
-
 
 
 
