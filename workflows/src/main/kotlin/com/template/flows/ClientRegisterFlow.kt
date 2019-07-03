@@ -2,23 +2,26 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.ClientContract
+import com.template.states.Calls
 import com.template.states.ClientState
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
+import net.corda.core.contracts.verifyMoveCommand
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.node.services.Vault
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
+import java.lang.Compiler.command
 
 
 @InitiatingFlow
 @StartableByRPC
-class ClientRegisterFlow(private val name: String,
-                         private val age: Int,
-                         private val receiver: Party,
-                         private val sender: Party) : FlowLogic<SignedTransaction>() {
+class ClientRegisterFlow(
+                         private val calls: Calls
+                         ) : FlowLogic<SignedTransaction>() {
 
     companion object{
         object BUILDING_TRANSACTION : ProgressTracker.Step("Building Transaction")
@@ -39,36 +42,86 @@ class ClientRegisterFlow(private val name: String,
     override val progressTracker = tracker()
 
 
+//    @Suspendable
+//    override fun call(): SignedTransaction {/* Step 1 - Build the transaction */
+//        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+//
+//        val clientState = ClientState(name,age,address,birthDate,status,religion,ourIdentity, ourIdentity,false)
+//        val cmd = Command(ClientContract.Commands.Register(),ourIdentity.owningKey)
+//
+//
+//        val txBuilder = TransactionBuilder(notary)
+//                .addOutputState(clientState,ClientContract.ID)
+//                .addCommand(cmd)
+//        progressTracker.currentStep = BUILDING_TRANSACTION
+//
+//        /* Step 2 - Verify the transaction */
+//        txBuilder.verify(serviceHub)
+//        progressTracker.currentStep = VERIFY_TRANSACTION
+//
+//        /* Step 3 - Sign the transaction */
+//        val signedTx = serviceHub.signInitialTransaction(txBuilder)
+//        val sessions = emptyList<FlowSession>()
+//        progressTracker.currentStep = SIGN_TRANSACTION
+//
+//
+//
+//        /* Step 4 and 5 - Notarize then Record the transaction */
+//        progressTracker.currentStep = NOTARIZE_TRANSACTION
+//        progressTracker.currentStep = RECORD_TRANSACTION
+//        return subFlow(FinalityFlow(signedTx, sessions))
+
+
+        //OOP by Lanky
     @Suspendable
-    override fun call(): SignedTransaction {/* Step 1 - Build the transaction */
-        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+//    step-1 creating transaction
+    override fun call(): SignedTransaction{
+            val clientRegister = clientRegister(outputState())
+            val signedTransaction = verifyAndSign(clientRegister)
+            val sessions = emptyList<FlowSession>()
+            val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, sessions)
+            return recordTransaction(transactionSignedByAllParties, sessions)
+    }
+    private fun outputState(): ClientState{
+        return ClientState(calls,ourIdentity,ourIdentity,false)
+    }
 
-        val userState = ClientState(name,age,receiver,sender,false)
-        val cmd = Command(ClientContract.Commands.Register(),ourIdentity.owningKey)
-
-
-        val txBuilder = TransactionBuilder(notary)
-                .addOutputState(userState,ClientContract.ID)
-                .addCommand(cmd)
+    private fun clientRegister(state: ClientState): TransactionBuilder{
         progressTracker.currentStep = BUILDING_TRANSACTION
+        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+        val cmd = Command ( ClientContract.Commands.Register(), ourIdentity.owningKey)
+        val txBuilder = TransactionBuilder(notary)
+                .addOutputState(state, ClientContract.ID)
+                .addCommand(cmd)
+        return txBuilder
+    }
+    //Verifying and signing the transaction
 
-        /* Step 2 - Verify the transaction */
-        txBuilder.verify(serviceHub)
+    private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
         progressTracker.currentStep = VERIFY_TRANSACTION
-
-        /* Step 3 - Sign the transaction */
-        val signedTx = serviceHub.signInitialTransaction(txBuilder)
-        val sessions= initiateFlow(receiver)
         progressTracker.currentStep = SIGN_TRANSACTION
-
-
-
-        /* Step 4 and 5 - Notarize then Record the transaction */
         progressTracker.currentStep = NOTARIZE_TRANSACTION
         progressTracker.currentStep = RECORD_TRANSACTION
-        return subFlow(FinalityFlow(signedTx, sessions))
+        transaction.verify(serviceHub)
+        return serviceHub.signInitialTransaction(transaction)
+
     }
+
+    //Collecting signatures from the counterparties
+    @Suspendable
+    private fun collectSignature(
+
+            transaction: SignedTransaction,
+            sessions: List<FlowSession>
+    ): SignedTransaction = subFlow(CollectSignaturesFlow(transaction, sessions))
+
+    @Suspendable
+
+    private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
+            subFlow(FinalityFlow(transaction, sessions))
+
 }
+
 
 
 /**
@@ -76,7 +129,7 @@ class ClientRegisterFlow(private val name: String,
  * The signing is handled by the [SignTransactionFlow].
  */
 @InitiatedBy(ClientRegisterFlow::class)
-class ClientFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+class RegisterFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
 
     @Suspendable
     override fun call(): SignedTransaction {

@@ -1,9 +1,9 @@
 package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.sun.security.ntlm.Client
 import com.template.contracts.ClientContract
 import com.template.contracts.ClientContract.Companion.ID
+import com.template.states.Calls
 import com.template.states.ClientState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndRef
@@ -19,7 +19,10 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class ClientVerifyFlow (private val counterparty: Party, private  val linearId: UniqueIdentifier): FlowLogic<SignedTransaction>(){
+class ClientUpdateFlow(
+        private var calls: Calls,
+        private val counterparty: Party,
+        private val linearId: UniqueIdentifier): FlowLogic<SignedTransaction>(){
 
     /* Declare Transaction steps*/
 
@@ -39,83 +42,106 @@ class ClientVerifyFlow (private val counterparty: Party, private  val linearId: 
             RECORD_TRANSACTION
     )
 
+
     override val progressTracker = tracker()
+
 //    @Suspendable
 //    override fun call(): SignedTransaction {
 //
-//        /* Step 1 - Build the transaction */
 //        val notary = serviceHub.networkMapCache.notaryIdentities.first()
 //
 //        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-//
-//        val inputState = serviceHub.vaultService.queryBy<ClientState>(criteria).states.single()
-//
-//        val input = inputState.state.data
-//
+//        //get the information from KYCState
+//        val Vault = serviceHub.vaultService.queryBy<ClientState>(criteria).states.first()
+//        val input = Vault.state.data
 //
 //
+//        if(name=="")
+//            name = input.name
+//        if(age=="")
+//            age = input.age.toString()
+//        if(address=="")
+//            address = input.address
+//        if(birthDate=="")
+//            birthDate = input.birthDate
+//        if(status=="")
+//            status = input.status
+//        if(religion=="")
+//            religion = input.religion
 //
-//        val clientState = ClientState(input.name,input.age,input.address,input.birthDate,input.status,input.religion,input.sender,counterparty,true,input.linearId)
 //
 //
-//        val cmd = Command(ClientContract.Commands.Verify(), listOf(ourIdentity.owningKey, counterparty.owningKey))
+//        val outputState = ClientState(name,age.toInt(),address,birthDate,status,religion,ourIdentity,counterparty,true,input.linearId)
+//
+//        val cmd = Command(ClientContract.Commands.Verify(),listOf(receiver.owningKey, ourIdentity.owningKey))
 //
 //        val txBuilder = TransactionBuilder(notary)
-//                .addInputState(inputState)
-//                .addOutputState(clientState,ClientContract.ID)
+//                .addInputState(Vault)
+//                .addOutputState(outputState, ID)
 //                .addCommand(cmd)
-//        progressTracker.currentStep = BUILDING_TRANSACTION
 //
 //
-//        /* Step 2 - Verify the transaction */
-//        progressTracker.currentStep = VERIFY_TRANSACTION
 //        txBuilder.verify(serviceHub)
 //
 //
-//        /* Step 3 - Sign the transaction */
-//        progressTracker.currentStep = SIGN_TRANSACTION
 //        val signedTx = serviceHub.signInitialTransaction(txBuilder)
+//        val sessions= initiateFlow(counterparty)
 //
-//        val sessions = initiateFlow(counterparty)
 //
 //
-//        // Step 9. Collecting missing signatures
+//        //Notarize then Record the transaction
 //        val stx = subFlow(CollectSignaturesFlow(signedTx, listOf(sessions)))
-//
-//        /* Step 4 and 5 - Notarize then Record the transaction */
-//        progressTracker.currentStep = NOTARIZE_TRANSACTION
-//        progressTracker.currentStep = RECORD_TRANSACTION
-//        return subFlow(FinalityFlow(stx, sessions))
-//
+//        return subFlow(FinalityFlow(stx,sessions))
 //
 //    }
-//}
 
     @Suspendable
     override fun call(): SignedTransaction {
-       val unVerified = userVerified()
-        val signedTransaction = verifyAndSign(unVerified)
+    progressTracker.currentStep = BUILDING_TRANSACTION
+    progressTracker.currentStep = VERIFY_TRANSACTION
+    progressTracker.currentStep = SIGN_TRANSACTION
+    progressTracker.currentStep = NOTARIZE_TRANSACTION
+    progressTracker.currentStep = RECORD_TRANSACTION
+        val unUpdated= userUpdate()
+        val signedTransaction = verifyAndSign(unUpdated)
         val sessions=(outputState().participants-ourIdentity).map {initiateFlow(it)}.toList()
         val transactionSignedByAllParties: SignedTransaction=collectSignature(signedTransaction, sessions)
         return recordTransaction(transactionSignedByAllParties, sessions)
     }
     private fun inputStateRef(): StateAndRef<ClientState> {
         val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-        return serviceHub.vaultService.queryBy<ClientState>(criteria).states.single()
+
+        return serviceHub.vaultService.queryBy<ClientState>(criteria).states.first()
     }
-    private fun outputState():ClientState{
+    private fun outputState(): ClientState{
         val input = inputStateRef().state.data
-        return ClientState(input.calls,input.sender,counterparty,true,input.linearId)
+
+        if(calls.name == "")
+            calls.name = input.calls.name
+        if(calls.age == "")
+            calls.age = input.calls.age
+        if(calls.address == "")
+            calls.address = input.calls.address
+        if(calls.birthDate == "")
+            calls.birthDate = input.calls.birthDate
+        if(calls.status == "")
+            calls.status = input.calls.status
+        if(calls.religion == "")
+            calls.religion = input.calls.religion
+
+        return ClientState(calls,ourIdentity,counterparty,true,input.linearId)
+
     }
-    private fun userVerified(): TransactionBuilder{
+    private fun userUpdate(): TransactionBuilder{
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
-        val cmd = Command ( ClientContract.Commands.Register(), outputState().participants.map {it.owningKey})
-        val txBuilder = TransactionBuilder(notary)
+        val cmd = Command(ClientContract.Commands.Update(), listOf(ourIdentity.owningKey, counterparty.owningKey))
+        val txBuilder = TransactionBuilder (notary)
+                .addInputState(inputStateRef())
                 .addOutputState(outputState(), ID)
                 .addCommand(cmd)
         return txBuilder
     }
-    private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction{
+    private fun verifyAndSign(transaction : TransactionBuilder): SignedTransaction{
         transaction.verify(serviceHub)
         return serviceHub.signInitialTransaction(transaction)
     }
@@ -126,18 +152,14 @@ class ClientVerifyFlow (private val counterparty: Party, private  val linearId: 
     ): SignedTransaction = subFlow(CollectSignaturesFlow(transaction, sessions))
 
 
-
     @Suspendable
-
     private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
             subFlow(FinalityFlow(transaction, sessions))
 
 }
 
-
-
-@InitiatedBy(ClientVerifyFlow::class)
-class VerifyFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+@InitiatedBy(ClientUpdateFlow::class)
+class UpdateFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
 
     @Suspendable
     override fun call(): SignedTransaction {
