@@ -56,11 +56,13 @@ class UpdateRegisterFlow (private var name: Name,
         val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = listOf(sessions))
 
         progressTracker.currentStep = FINALISING
+
         return verifyRegistration(transaction = transactionSignedByAllParties, sessions = listOf(sessions))
     }
 
     private fun inputStateRef(): StateAndRef<RegisterState> {
         val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
+
         return serviceHub.vaultService.queryBy<RegisterState>(criteria = criteria).states.single()
     }
 
@@ -98,6 +100,7 @@ class UpdateRegisterFlow (private var name: Name,
         val updateCommand =
                 Command(RegisterContract.Commands.Update(),
                         outState().participants.map { it.owningKey })
+
         return TransactionBuilder(notary = notary).withItems(inputStateRef(), StateAndContract(outState(), contract), updateCommand)
     }
 
@@ -136,6 +139,7 @@ class UpdateRegisterFlowResponder (val flowSession: FlowSession) : FlowLogic<Sig
         val payload = flowSession.receive(Name::class.java).unwrap { it }
         val signedTransaction = subFlow(signedTransactionFlow)
         subFlow(RegisterFlow(payload))
+
         return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = signedTransaction.id))
     }
 }
