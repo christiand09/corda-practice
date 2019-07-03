@@ -32,6 +32,8 @@ class VerifyUserFlow (
         return recordTransaction(transactionSignedByAllParties, sessions)
     }
 
+
+
     private fun inputStateRef(): StateAndRef<MyState> {
         val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
         return serviceHub.vaultService.queryBy<MyState>(criteria).states.single()
@@ -39,7 +41,14 @@ class VerifyUserFlow (
 
     private fun outputState(): MyState{
         val input = inputStateRef().state.data
-        return MyState(input.firstName,input.lastName,input.age,input.gender,input.address,ourIdentity, receiver, true,linearId = linearId)
+        //return MyState(input.firstName,input.lastName,input.age,input.gender,input.address,ourIdentity, receiver, true,linearId = linearId)
+        return MyState(
+                input.formSet,
+                ourIdentity,
+                receiver,
+                true,
+                linearId = linearId
+        )
     }
 
     private fun transaction(): TransactionBuilder {
@@ -54,7 +63,7 @@ class VerifyUserFlow (
 //       val cmd = Command(MyContract.Commands.Issue(), listOf(receiver.owningKey, ourIdentity.owningKey))
         val cmd = Command(MyContract.Commands.Verify(), outputState().participants.map { it.owningKey })
         val builder = TransactionBuilder(notary = notary)
-        .addInputState(inputStateRef())
+                .addInputState(inputStateRef())
                 .addOutputState(outputState(), MyContract.IOU_CONTRACT_ID)
                 .addCommand(cmd)
         return builder

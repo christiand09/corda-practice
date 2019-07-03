@@ -11,6 +11,7 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import com.template.states.MyState
 import com.template.contracts.MyContract
+import com.template.states.formSet
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.node.services.queryBy
@@ -19,13 +20,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 
 @InitiatingFlow
 @StartableByRPC
-class RegisterUserFlow(val firstName: String,
-                       val lastName: String,
-                       val age: String,
-                       val gender: String,
-                       val address: String
-
-
+class RegisterUserFlow(private val formSet: formSet
                      ): FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call(): SignedTransaction {
@@ -36,14 +31,22 @@ class RegisterUserFlow(val firstName: String,
         return recordTransaction(transactionSignedByAllParties, sessions)
     }
 
+    private fun outputState(): MyState
+    {
+        return MyState(
+                formSet,
+                ourIdentity,
+                ourIdentity
+        )
+    }
 
     private fun transaction(): TransactionBuilder {
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
-        val MyState = MyState(firstName,lastName,age, gender,address, ourIdentity, ourIdentity)
+//        val MyState = MyState(firstName,lastName,age, gender,address, ourIdentity, ourIdentity)
         val issueCommand = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
         val builder = TransactionBuilder(notary = notary )
 
-        builder.addOutputState(MyState, MyContract.IOU_CONTRACT_ID)
+        builder.addOutputState(outputState(), MyContract.IOU_CONTRACT_ID)
         builder.addCommand(issueCommand)
         return builder
     }

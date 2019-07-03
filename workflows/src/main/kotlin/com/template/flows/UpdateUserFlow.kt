@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Suspendable
 import com.google.common.base.Strings.isNullOrEmpty
 import com.template.contracts.MyContract
 import com.template.states.MyState
+import com.template.states.formSet
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
@@ -18,11 +19,7 @@ import net.corda.core.transactions.TransactionBuilder
 
 @InitiatingFlow
 @StartableByRPC
-class UpdateUserFlow( private var firstName: String,
-                      private var lastName: String,
-                      private var age: String ,
-                      private var gender: String,
-                      private var address: String,
+class UpdateUserFlow( private val formSet: formSet,
                      private val receiver: Party,
                       private val linearId: UniqueIdentifier = UniqueIdentifier()
                     ): FlowLogic<SignedTransaction>(){
@@ -43,7 +40,15 @@ class UpdateUserFlow( private var firstName: String,
 
     private fun outputState(): MyState{
         val input = inputStateRef().state.data
-        return MyState(firstName,lastName,age,gender,address,ourIdentity,input.receiver,input.approvals, input.participants, input.linearId)
+        //return MyState(firstName,lastName,age,gender,address,ourIdentity,input.receiver,input.approvals, input.participants, input.linearId)
+                return MyState(
+                        formSet,
+                        ourIdentity,
+                        input.receiver,
+                        input.approvals,
+                        input.participants,
+                        input.linearId
+        )
     }
 
     private fun transaction(): TransactionBuilder {
@@ -54,20 +59,23 @@ class UpdateUserFlow( private var firstName: String,
 //        val userState = MyState(firstName, lastName, age, gender, address, ourIdentity, input.receiver, input.approvals, input.participants, input.linearId)
 
         when {
-            firstName == "" -> firstName = inputStateRef().state.data.firstName
+            formSet.firstName == "" -> formSet.firstName = inputStateRef().state.data.formSet.firstName
         }
         when {
-            lastName == "" -> lastName = inputStateRef().state.data.lastName
+            formSet.lastName == "" -> formSet.lastName = inputStateRef().state.data.formSet.lastName
         }
         when {
-            gender == "" -> gender = inputStateRef().state.data.gender
+            formSet.gender == "" -> formSet.gender = inputStateRef().state.data.formSet.gender
         }
         when {
-            address == "" -> address = inputStateRef().state.data.address
+            formSet.address == "" -> formSet.address = inputStateRef().state.data.formSet.address
         }
         when {
-            age == "" -> age = inputStateRef().state.data.age
+            formSet.age == "" -> formSet.age = inputStateRef().state.data.formSet.age
         }
+
+
+
 
         val cmd = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
         val builder = TransactionBuilder(notary)
