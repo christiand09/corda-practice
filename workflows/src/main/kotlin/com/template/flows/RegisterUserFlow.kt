@@ -45,7 +45,6 @@ class RegisterUserFlow(private val formSet: formSet
 //        val MyState = MyState(firstName,lastName,age, gender,address, ourIdentity, ourIdentity)
         val issueCommand = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
         val builder = TransactionBuilder(notary = notary )
-
         builder.addOutputState(outputState(), MyContract.IOU_CONTRACT_ID)
         builder.addCommand(issueCommand)
         return builder
