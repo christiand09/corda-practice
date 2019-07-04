@@ -2,9 +2,13 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.ClientContract
+import com.template.contracts.ClientContract.Companion.ID
 import com.template.states.Calls
 import com.template.states.ClientState
-import net.corda.core.contracts.*
+import net.corda.core.contracts.Command
+import net.corda.core.contracts.StateAndRef
+import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
@@ -12,17 +16,18 @@ import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
-
+import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
 class ClientUpdateRegisterFlow(
         private var calls: Calls,
         private val counterparty: Party,
-        private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>() {
+        private val linearId: UniqueIdentifier): FlowLogic<SignedTransaction>(){
 
+    /* Declare Transaction steps*/
 
-    companion object {
+    companion object{
         object BUILDING_TRANSACTION : ProgressTracker.Step("Building Transaction")
         object SIGN_TRANSACTION : ProgressTracker.Step("Signing Transaction")
         object VERIFY_TRANSACTION : ProgressTracker.Step("Verifying Transaction")
@@ -31,40 +36,36 @@ class ClientUpdateRegisterFlow(
     }
 
     fun tracker() = ProgressTracker(
-            ClientRegisterFlow.Companion.BUILDING_TRANSACTION,
-            ClientRegisterFlow.Companion.SIGN_TRANSACTION,
-            ClientRegisterFlow.Companion.VERIFY_TRANSACTION,
-            ClientRegisterFlow.Companion.NOTARIZE_TRANSACTION,
-            ClientRegisterFlow.Companion.RECORD_TRANSACTION
+            BUILDING_TRANSACTION,
+            SIGN_TRANSACTION,
+            VERIFY_TRANSACTION,
+            NOTARIZE_TRANSACTION,
+            RECORD_TRANSACTION
     )
+
 
     override val progressTracker = tracker()
 
     @Suspendable
-    override fun call(): SignedTransaction
-    {
-
-        val updating = update()
-
-
-        val signedTransaction = verifyAndSign(transaction = updating)
-        val sessions = initiateFlow(counterparty)
+    override fun call(): SignedTransaction {
+        progressTracker.currentStep = BUILDING_TRANSACTION
+        progressTracker.currentStep = VERIFY_TRANSACTION
+        progressTracker.currentStep = SIGN_TRANSACTION
+        progressTracker.currentStep = NOTARIZE_TRANSACTION
+        progressTracker.currentStep = RECORD_TRANSACTION
+        val unUpdated= userUpdate()
+        val signedTransaction = verifyAndSign(unUpdated)
+        val sessions= initiateFlow(counterparty)
+        val transactionSignedByAllParties: SignedTransaction=collectSignature(signedTransaction, listOf(sessions))
         sessions.send(calls)
-        val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = listOf(sessions))
-
-
-
-        return verifyRegistration(transaction = transactionSignedByAllParties, sessions = listOf(sessions))
+        return recordTransaction(transactionSignedByAllParties, listOf(sessions))
     }
-
     private fun inputStateRef(): StateAndRef<ClientState> {
         val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
 
-        return serviceHub.vaultService.queryBy<ClientState>(criteria = criteria).states.single()
+        return serviceHub.vaultService.queryBy<ClientState>(criteria).states.first()
     }
-
-    private fun outState(): ClientState
-    {
+    private fun outputState(): ClientState{
         val input = inputStateRef().state.data
 
         if(calls.name == "")
@@ -80,42 +81,36 @@ class ClientUpdateRegisterFlow(
         if(calls.religion == "")
             calls.religion = input.calls.religion
 
-
         return ClientState(calls,ourIdentity,counterparty,true,input.linearId)
+
     }
-
-    private fun update(): TransactionBuilder
-    {
-        val contract = ClientContract.ID
-        val notary = inputStateRef().state.notary
-        val updateCommand =
-                Command(ClientContract.Commands.Update(),
-                        outState().participants.map { it.owningKey })
-
-        return TransactionBuilder(notary = notary).withItems(inputStateRef(), StateAndContract(outState(), contract), updateCommand)
+    private fun userUpdate(): TransactionBuilder{
+        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+        val cmd = Command(ClientContract.Commands.Update(), listOf(ourIdentity.owningKey, counterparty.owningKey))
+        return TransactionBuilder (notary)
+                .addInputState(inputStateRef())
+                .addOutputState(outputState(), ID)
+                .addCommand(cmd)
     }
-
-    private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction
-    {
+    private fun verifyAndSign(transaction : TransactionBuilder): SignedTransaction{
         transaction.verify(serviceHub)
         return serviceHub.signInitialTransaction(transaction)
     }
-
     @Suspendable
     private fun collectSignature(
             transaction: SignedTransaction,
             sessions: List<FlowSession>
     ): SignedTransaction = subFlow(CollectSignaturesFlow(transaction, sessions))
 
+
     @Suspendable
-    private fun verifyRegistration(
-            transaction: SignedTransaction,
-            sessions: List<FlowSession>
-    ): SignedTransaction = subFlow(FinalityFlow(transaction, sessions))
+    private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
+            subFlow(FinalityFlow(transaction, sessions))
+
 }
 
 @InitiatedBy(ClientUpdateRegisterFlow::class)
-class UpdateRegisterFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+class ClientUpdateRegisterFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
 
     @Suspendable
     override fun call(): SignedTransaction {
@@ -127,8 +122,8 @@ class UpdateRegisterFlowResponder(val flowSession: FlowSession): FlowLogic<Signe
         }
 
         val txWeJustSignedId = subFlow(signedTransactionFlow)
-
+        val payload = flowSession.receive(Calls::class.java).unwrap { it }
+        subFlow(ClientRegisterFlow(payload))
         return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
     }
 }
-
