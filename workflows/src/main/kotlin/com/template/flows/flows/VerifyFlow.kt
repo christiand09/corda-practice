@@ -1,15 +1,13 @@
-package com.template.flows.register
+package com.template.flows.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.RegisterContract
-import com.template.states.Name
 import com.template.states.RegisterState
-import net.corda.core.contracts.*
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.contracts.StateAndContract
+import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
-import net.corda.core.flows.FlowException
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.ReceiveFinalityFlow
@@ -19,14 +17,12 @@ import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
-import net.corda.core.utilities.unwrap
 
 
 @InitiatingFlow
 @StartableByRPC
-class UpdateRegisterFlow (private var name: Name,
-                          private val counterParty: Party,
-                          private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
+class VerifyFlow (private val counterParty: String,
+                  private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
 
@@ -35,7 +31,8 @@ class UpdateRegisterFlow (private var name: Name,
         object CREATING : ProgressTracker.Step("Creating registration!")
         object SIGNING : ProgressTracker.Step("Signing registration!")
         object VERIFYING : ProgressTracker.Step("Verifying registration!")
-        object FINALISING : ProgressTracker.Step("Finalize registration!") {
+        object FINALISING : ProgressTracker.Step("Finalize registration!")
+        {
             override fun childProgressTracker() = FinalityFlow.tracker()
         }
 
@@ -46,62 +43,54 @@ class UpdateRegisterFlow (private var name: Name,
     override fun call(): SignedTransaction
     {
         progressTracker.currentStep = CREATING
-        val updating = update()
+        val verification = verify()
 
         progressTracker.currentStep = VERIFYING
         progressTracker.currentStep = SIGNING
-        val signedTransaction = verifyAndSign(transaction = updating)
-        val sessions = initiateFlow(counterParty)
-        sessions.send(name)
+        val signedTransaction = verifyAndSign(transaction = verification)
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+            ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+//        val sessions = (outState().participants - ourIdentity).map { initiateFlow(it) }.toSet().toList()
+        val sessions = initiateFlow(counterRef)
         val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = listOf(sessions))
 
         progressTracker.currentStep = FINALISING
-
         return verifyRegistration(transaction = transactionSignedByAllParties, sessions = listOf(sessions))
     }
 
-    private fun inputStateRef(): StateAndRef<RegisterState> {
+    private fun inputStateRef(): StateAndRef<RegisterState>{
         val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-
         return serviceHub.vaultService.queryBy<RegisterState>(criteria = criteria).states.single()
     }
 
     private fun outState(): RegisterState
     {
         val input = inputStateRef().state.data
-
-        if (name.firstname == "")
-            name.firstname = input.name.firstname
-        if (name.lastname == "")
-            name.lastname = input.name.lastname
-        if (name.age == "")
-            name.age = input.name.age
-        if (name.gender == "")
-            name.gender = input.name.gender
-        if (name.address == "")
-            name.address = input.name.address
-
-        if (!input.approved)
-            throw FlowException("The registrant must be approved before it can be update.")
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
 
         return RegisterState(
-                name,
+                input.name,
                 ourIdentity,
-                counterParty,
+                counterRef,
                 approved = true,
                 linearId = linearId
         )
     }
 
-    private fun update(): TransactionBuilder
+    private fun verify(): TransactionBuilder
     {
-        val contract = RegisterContract.REGISTER_ID
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
         val notary = inputStateRef().state.notary
-        val updateCommand =
-                Command(RegisterContract.Commands.Update(),
-                        outState().participants.map { it.owningKey })
-
-        return TransactionBuilder(notary = notary).withItems(inputStateRef(), StateAndContract(outState(), contract), updateCommand)
+        val verifyCommand =
+                Command(RegisterContract.Commands.Verify(),
+                        listOf(ourIdentity.owningKey, counterRef.owningKey))
+        val builder = TransactionBuilder(notary = notary)
+        builder.addInputState(inputStateRef())
+        builder.addOutputState(state = outState(), contract = RegisterContract.REGISTER_ID)
+        builder.addCommand(verifyCommand)
+        return builder
     }
 
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction
@@ -123,24 +112,21 @@ class UpdateRegisterFlow (private var name: Name,
     ): SignedTransaction = subFlow(FinalityFlow(transaction, sessions))
 }
 
-@InitiatedBy(UpdateRegisterFlow::class)
-class UpdateRegisterFlowResponder (val flowSession: FlowSession) : FlowLogic<SignedTransaction>()
+@InitiatedBy(VerifyFlow::class)
+class VerifyFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>()
 {
     @Suspendable
-    override fun call(): SignedTransaction
-    {
+    override fun call(): SignedTransaction {
         val signedTransactionFlow = object : SignTransactionFlow(flowSession)
         {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
                 val output = stx.tx.outputs.single().data
-                "This must be an update transaction." using (output is RegisterState)
+                "This must be a verify transaction" using (output is RegisterState)
             }
         }
-        val payload = flowSession.receive(Name::class.java).unwrap { it }
+
         val signedTransaction = subFlow(signedTransactionFlow)
-        subFlow(RegisterFlow(payload))
 
         return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = signedTransaction.id))
     }
 }
-

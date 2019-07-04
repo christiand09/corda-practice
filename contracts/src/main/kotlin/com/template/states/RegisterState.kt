@@ -12,7 +12,7 @@ import net.corda.core.serialization.CordaSerializable
 data class RegisterState (val name: Name,
                           val sender: Party,
                           val receivers: Party,
-                          val approved: Boolean = false,
+                          val approved: Boolean,
                           override val participants: List<Party> = listOf(sender, receivers),
                           override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState
 

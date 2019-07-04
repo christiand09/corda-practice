@@ -1,4 +1,4 @@
-package com.template.flows.register
+package com.template.flows.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.RegisterContract
@@ -10,7 +10,6 @@ import net.corda.core.flows.*
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.ReceiveFinalityFlow
-import net.corda.core.serialization.CordaSerializable
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
@@ -44,6 +43,8 @@ class RegisterFlow (private val name: Name) : FlowLogic<SignedTransaction>()
         progressTracker.currentStep = VERIFYING
         progressTracker.currentStep = SIGNING
         val signedTransaction = verifyAndSign(transaction = registration)
+//        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+//                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
         val sessions = emptyList<FlowSession>() // empty because the owner's signature is just needed
         val transactionSignedByParties = collectSignature(transaction = signedTransaction, sessions = sessions)
 
@@ -56,7 +57,8 @@ class RegisterFlow (private val name: Name) : FlowLogic<SignedTransaction>()
         return RegisterState(
                 name,
                 ourIdentity,
-                ourIdentity
+                ourIdentity,
+                false
         )
     }
 
@@ -99,7 +101,7 @@ class RegisterFlowResponder(val counterPartySession: FlowSession) : FlowLogic<Si
         {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
                 val output = stx.tx.outputs.single().data
-                "This must be a register transaction" using (output is RegisterState)
+                "This must be a flows transaction" using (output is RegisterState)
             }
         }
         val signedTransaction = subFlow(signTransactionFlow)
