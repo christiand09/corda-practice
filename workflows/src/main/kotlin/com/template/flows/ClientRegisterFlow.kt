@@ -5,16 +5,11 @@ import com.template.contracts.ClientContract
 import com.template.states.Calls
 import com.template.states.ClientState
 import net.corda.core.contracts.Command
-import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
-import net.corda.core.contracts.verifyMoveCommand
 import net.corda.core.flows.*
-import net.corda.core.identity.Party
-import net.corda.core.node.services.Vault
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
-import java.lang.Compiler.command
 
 
 @InitiatingFlow
@@ -90,10 +85,9 @@ class ClientRegisterFlow(
         progressTracker.currentStep = BUILDING_TRANSACTION
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
         val cmd = Command ( ClientContract.Commands.Register(), ourIdentity.owningKey)
-        val txBuilder = TransactionBuilder(notary)
+        return TransactionBuilder(notary)
                 .addOutputState(state, ClientContract.ID)
                 .addCommand(cmd)
-        return txBuilder
     }
     //Verifying and signing the transaction
 

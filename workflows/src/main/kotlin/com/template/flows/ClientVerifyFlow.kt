@@ -1,7 +1,6 @@
 package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.sun.security.ntlm.Client
 import com.template.contracts.ClientContract
 import com.template.contracts.ClientContract.Companion.ID
 import com.template.states.ClientState
@@ -110,10 +109,9 @@ class ClientVerifyFlow (private val counterparty: Party, private  val linearId: 
     private fun userVerified(): TransactionBuilder{
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
         val cmd = Command ( ClientContract.Commands.Register(), outputState().participants.map {it.owningKey})
-        val txBuilder = TransactionBuilder(notary)
+        return TransactionBuilder(notary)
                 .addOutputState(outputState(), ID)
                 .addCommand(cmd)
-        return txBuilder
     }
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction{
         transaction.verify(serviceHub)

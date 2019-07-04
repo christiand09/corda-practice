@@ -56,24 +56,25 @@ class ClientUpdateFlow(
 //        val input = Vault.state.data
 //
 //
-//        if(name=="")
-//            name = input.name
-//        if(age=="")
-//            age = input.age.toString()
-//        if(address=="")
-//            address = input.address
-//        if(birthDate=="")
-//            birthDate = input.birthDate
-//        if(status=="")
-//            status = input.status
-//        if(religion=="")
-//            religion = input.religion
+//
+//        if(calls.name=="")
+//            calls.name = input.calls.name
+//        if(calls.age=="")
+//            calls.age = input.calls.age
+//        if(calls.address=="")
+//            calls.address = input.calls.address
+//        if(calls.birthDate=="")
+//            calls.birthDate = input.calls.birthDate
+//        if(calls.status=="")
+//            calls.status = input.calls.status
+//        if(calls.religion=="")
+//            calls.religion = input.calls.religion
 //
 //
 //
-//        val outputState = ClientState(name,age.toInt(),address,birthDate,status,religion,ourIdentity,counterparty,true,input.linearId)
+//        val outputState = ClientState(calls,ourIdentity,counterparty,true,input.linearId)
 //
-//        val cmd = Command(ClientContract.Commands.Verify(),listOf(receiver.owningKey, ourIdentity.owningKey))
+//        val cmd = Command(ClientContract.Commands.Verify(),listOf(counterparty.owningKey, ourIdentity.owningKey))
 //
 //        val txBuilder = TransactionBuilder(notary)
 //                .addInputState(Vault)
