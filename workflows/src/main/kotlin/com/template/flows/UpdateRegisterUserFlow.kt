@@ -20,7 +20,8 @@ import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
-class UpdateRegisterUserFlow(private val formSet: formSet,
+class UpdateRegisterUserFlow(
+                     private val formSet: formSet,
                      private val receiver: Party,
                      private val linearId: UniqueIdentifier = UniqueIdentifier()): FlowLogic<SignedTransaction>(){
 

@@ -18,5 +18,6 @@ fun main(args: Array<String>) {
     val app = SpringApplication(Starter::class.java)
     app.setBannerMode(Banner.Mode.OFF)
     app.webApplicationType = SERVLET
+//    app.isWebEnvironment = true
     app.run(*args)
 }

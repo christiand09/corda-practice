@@ -18,18 +18,20 @@ import net.corda.core.transactions.TransactionBuilder
 @InitiatingFlow
 @StartableByRPC
 class VerifyUserFlow (
-        private val receiver: Party,
+        private val receiver: String,
         private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>() {
 
     @Suspendable
     override fun call(): SignedTransaction {
         val transaction: TransactionBuilder = transaction()
         val signedTransaction: SignedTransaction = verifyAndSign(transaction)
-        //val sessions = initiateFlow(receiver)
-        val sessions = (outputState().participants - ourIdentity).map { initiateFlow(it) }.toList()
+        val counterRef = serviceHub.identityService.partiesFromName(receiver, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $receiver.")
+        val sessions = initiateFlow(counterRef)
+        //val sessions = (outputState().participants - ourIdentity).map { initiateFlow(it) }.toList()
 //        val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, listOf(sessions))
-        val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, sessions)
-        return recordTransaction(transactionSignedByAllParties, sessions)
+        val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, listOf(sessions))
+        return recordTransaction(transactionSignedByAllParties, listOf(sessions))
     }
 
 
@@ -42,10 +44,12 @@ class VerifyUserFlow (
     private fun outputState(): MyState{
         val input = inputStateRef().state.data
         //return MyState(input.firstName,input.lastName,input.age,input.gender,input.address,ourIdentity, receiver, true,linearId = linearId)
+        val counterRef = serviceHub.identityService.partiesFromName(receiver, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $receiver.")
         return MyState(
                 input.formSet,
                 ourIdentity,
-                receiver,
+                counterRef,
                 true,
                 linearId = linearId
         )
