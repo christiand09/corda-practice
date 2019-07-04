@@ -13,7 +13,6 @@ import net.corda.core.flows.FlowException
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.ReceiveFinalityFlow
-import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
@@ -23,7 +22,7 @@ import net.corda.core.utilities.ProgressTracker
 @InitiatingFlow
 @StartableByRPC
 class UpdateFlow (private var name: Name,
-                  private val counterParty: Party,
+                  private val counterParty: String,
                   private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
@@ -49,11 +48,14 @@ class UpdateFlow (private var name: Name,
         progressTracker.currentStep = VERIFYING
         progressTracker.currentStep = SIGNING
         val signedTransaction = verifyAndSign(transaction = updating)
-        val sessions = (outState().participants - ourIdentity).map { initiateFlow(it) }.toSet().toList()
-        val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = sessions)
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+        val sessions = initiateFlow(counterRef)
+//        val sessions = (outState().participants - ourIdentity).map { initiateFlow(it) }.toSet().toList()
+        val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = listOf(sessions))
 
         progressTracker.currentStep = FINALISING
-        return verifyRegistration(transaction = transactionSignedByAllParties, sessions = sessions)
+        return verifyRegistration(transaction = transactionSignedByAllParties, sessions = listOf(sessions))
     }
 
     private fun inputStateRef(): StateAndRef<RegisterState> {
@@ -79,10 +81,13 @@ class UpdateFlow (private var name: Name,
         if (!input.approved)
             throw FlowException("The registrant must be approved before it can be update.")
 
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+
         return RegisterState(
                 name,
                 ourIdentity,
-                counterParty,
+                counterRef,
                 approved = true,
                 linearId = linearId
         )

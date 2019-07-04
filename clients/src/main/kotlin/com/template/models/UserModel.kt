@@ -18,3 +18,15 @@ data class UserVerifyModel @JsonCreator constructor(
     val counterParty: String,
     val linearId: UniqueIdentifier
 )
+
+data class UserUpdateModel @JsonCreator constructor(
+    val name: Name,
+    val counterParty: String,
+    val linearId: UniqueIdentifier
+)
+
+data class UserUpdateRegisterModel @JsonCreator constructor(
+    val name: Name,
+    val counterParty: String,
+    val linearId: UniqueIdentifier
+)
