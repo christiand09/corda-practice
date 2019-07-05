@@ -8,6 +8,7 @@ import net.corda.core.contracts.Command
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.InitiatingFlow
 import net.corda.core.flows.StartableByRPC
+import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
@@ -25,6 +26,9 @@ class CreateKYCFlow(private val name: Name,
         progressTracker.currentStep = INITIALIZING
         val transaction = transaction()
         val signedTransaction = verifyAndSign(transaction)
+        println("*****************************************************************************")
+        println(allParties())
+        println("*****************************************************************************")
         return recordTransaction(signedTransaction, emptyList())
     }
 

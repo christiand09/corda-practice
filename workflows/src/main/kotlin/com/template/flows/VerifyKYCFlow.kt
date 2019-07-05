@@ -22,10 +22,9 @@ class VerifyKYCFlow(private val id : String) : UserBaseFlow() {
         progressTracker.currentStep = INITIALIZING
         val transaction = transaction()
         val signedTransaction = verifyAndSign(transaction)
-        val parties = (serviceHub.networkMapCache.notaryIdentities)
-        val sessions = (parties - ourIdentity).map{ initiateFlow(it)}.toSet().toList()
+        val sessions = (stringToParty(allParties()) - ourIdentity).map{ initiateFlow(it)}.toSet().toList()
         val transactionSignedByAllParties = collectSignature(signedTransaction, sessions)
-        return recordTransaction(transactionSignedByAllParties, emptyList())
+        return recordTransaction(transactionSignedByAllParties, sessions)
     }
 
     private fun transaction(): TransactionBuilder {
@@ -33,9 +32,10 @@ class VerifyKYCFlow(private val id : String) : UserBaseFlow() {
         val notary = firstNotary
         val refState = getKYCByLinearId(UniqueIdentifier.fromString(id))
 
-        val parties = (serviceHub.networkMapCache.notaryIdentities)
         val refStateData = refState.state.data
-        val output = refStateData.verify(parties)
+        val output = refStateData.verify(stringToParty(allParties()))
+
+        println(output)
 
         val verifyCommand = Command(KYCContract.Commands.Verify(), output.participants.map { it.owningKey })
         val builder = TransactionBuilder(notary = notary)

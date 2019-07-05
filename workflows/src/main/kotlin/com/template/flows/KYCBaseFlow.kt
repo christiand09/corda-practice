@@ -7,6 +7,7 @@ import com.template.states.KYCState
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
+import net.corda.core.identity.Party
 import net.corda.core.node.services.Vault
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
@@ -37,6 +38,21 @@ abstract class UserBaseFlow : FlowLogic<SignedTransaction>() {
         transaction.verify(serviceHub)
         return serviceHub.signInitialTransaction(transaction)
     }
+
+    fun allParties() : List<String> {
+        return serviceHub.networkMapCache.allNodes.map {
+            node -> node.legalIdentities.first().name.organisation
+        } - serviceHub.networkMapCache.notaryIdentities.map{
+            notary -> notary.name.organisation
+        }
+    }
+
+    fun stringToParty(parties : List<String>) : List<Party> {
+        return parties.map { party ->
+            serviceHub.identityService.partiesFromName(party, false).single()
+        }
+    }
+
 
     @Suspendable
     fun collectSignature(
