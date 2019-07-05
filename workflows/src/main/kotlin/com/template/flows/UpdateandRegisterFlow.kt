@@ -2,59 +2,73 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.UserContract
-import com.template.states.UserDetails
-import com.template.states.UserState
-import net.corda.core.contracts.Command
-import net.corda.core.contracts.StateAndRef
-import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.contracts.requireThat
+import com.template.states.*
+import net.corda.core.contracts.*
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
-import net.corda.core.transactions.SignedTransaction
-import net.corda.core.transactions.TransactionBuilder
+import net.corda.core.transactions.*
+import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
 class UpdateandRegisterFlow (private var name: UserDetails,
-                             private val counterparty: Party,
+                             private val counterparty: String,
                              private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>() {
+    override val progressTracker: ProgressTracker = tracker()
+
+    companion object
+    {
+        object CREATING : ProgressTracker.Step("Creating registration!")
+        object SIGNING : ProgressTracker.Step("Signing registration!")
+        object VERIFYING : ProgressTracker.Step("Verifying registration!")
+        object FINALISING : ProgressTracker.Step("Finalize registration!") {
+            override fun childProgressTracker() = FinalityFlow.tracker()
+        }
+
+        fun tracker() = ProgressTracker(CREATING, SIGNING, VERIFYING, FINALISING)
+    }
     @Suspendable
     override fun call(): SignedTransaction {
-
+        progressTracker.currentStep = CREATING
         val update = update()
-        val signedTransaction = verifyandsign(update)
-        val session = initiateFlow(counterparty)
-        val transactionsigned = collectsignatures(signedTransaction, listOf(session))
+        progressTracker.currentStep = VERIFYING
+        progressTracker.currentStep = SIGNING
+        val signedTransaction = verifyandsign(transaction =  update)
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
+        val session = initiateFlow(counterRef)
         session.send(name)
-        return recordUpdate(transactionsigned, session =  listOf(session))
+        val transactionsigned = collectsignatures(signedTransaction,session =  listOf(session))
+        progressTracker.currentStep = FINALISING
+        return recordUpdate(transaction = transactionsigned, session =  listOf(session))
 
     }
-
     private fun updatestate(): UserState {
         val input = inputstateref().state.data
         if (name.fullname == "") name.fullname = input.name.fullname
         if (name.age == "") name.age = input.name.age
         if (name.gender == "") name.gender = input.name.gender
         if (name.address == "") name.address = input.name.address
-        return UserState(name, ourIdentity, input.receiver, input.verify, linearId = linearId)
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
+        return UserState(name, ourIdentity, counterRef, input.verify, linearId = linearId)
     }
 
     private fun inputstateref(): StateAndRef<UserState> {
         val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-        return serviceHub.vaultService.queryBy<UserState>(criteria).states.single()
+        return serviceHub.vaultService.queryBy<UserState>(criteria).states.first()
     }
     private fun update(): TransactionBuilder {
+        val contract = UserContract.ID_Contracts
         val notary = inputstateref().state.notary
-        val input = inputstateref().state.data
-        val command = Command(UserContract.Commands.Update(), listOf(ourIdentity.owningKey,input.receiver.owningKey))
-        val builder = TransactionBuilder(notary = notary)
-                .addInputState(inputstateref())
-                .addOutputState(updatestate(), UserContract.ID_Contracts)
-                .addCommand(command)
-        return builder
+        val updateCommand =
+                Command(UserContract.Commands.Update(),
+                        updatestate().participants.map { it.owningKey })
+
+        return TransactionBuilder(notary = notary).withItems(inputstateref(), StateAndContract(updatestate(), contract), updateCommand)
     }
     private fun verifyandsign(transaction: TransactionBuilder): SignedTransaction {
         transaction.verify(serviceHub)
@@ -69,7 +83,7 @@ class UpdateandRegisterFlow (private var name: UserDetails,
             subFlow(FinalityFlow(transaction, session))
 
     @InitiatedBy(UpdateandRegisterFlow::class)
-    class IOUIssueFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>() {
+    class UpdateandRegisterFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>() {
 
         @Suspendable
         override fun call(): SignedTransaction {
@@ -79,8 +93,8 @@ class UpdateandRegisterFlow (private var name: UserDetails,
                     "This must be an IOU transaction" using (output is UserState)
                 }
             }
-            val txWeJustSignedId = subFlow(signedTransactionFlow)
             val load = flowSession.receive(UserDetails::class.java).unwrap{it}
+            val txWeJustSignedId = subFlow(signedTransactionFlow)
             subFlow(UserRegisterFlow(load))
             return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
         }

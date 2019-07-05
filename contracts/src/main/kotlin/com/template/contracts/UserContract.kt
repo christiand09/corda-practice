@@ -1,11 +1,11 @@
 package com.template.contracts
 
-import com.sun.xml.internal.ws.developer.MemberSubmissionAddressing
 import com.template.states.UserState
-import net.corda.core.contracts.*
-import net.corda.core.internal.LegalNameValidator
+import net.corda.core.contracts.CommandData
+import net.corda.core.contracts.Contract
+import net.corda.core.contracts.TypeOnlyCommandData
+import net.corda.core.contracts.requireThat
 import net.corda.core.transactions.LedgerTransaction
-import java.security.CodeSigner
 import java.security.PublicKey
 
 

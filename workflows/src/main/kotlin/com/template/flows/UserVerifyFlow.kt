@@ -3,22 +3,18 @@ package com.template.flows
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.UserContract
 import com.template.states.UserState
-import net.corda.core.contracts.Command
-import net.corda.core.contracts.StateAndRef
-import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.contracts.requireThat
+import net.corda.core.contracts.*
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
-import net.corda.core.transactions.SignedTransaction
-import net.corda.core.transactions.TransactionBuilder
+import net.corda.core.transactions.*
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.ProgressTracker.Step
 
 @InitiatingFlow
 @StartableByRPC
-class UserVerifyFlow(private val id: UniqueIdentifier, private val counterparty: Party):FlowLogic<SignedTransaction>() {
+class UserVerifyFlow(private val linearId: UniqueIdentifier, private val counterparty: String):FlowLogic<SignedTransaction>() {
 
     override val progressTracker: ProgressTracker = tracker()
     companion object
@@ -37,24 +33,30 @@ class UserVerifyFlow(private val id: UniqueIdentifier, private val counterparty:
     override fun call(): SignedTransaction {
         progressTracker.currentStep = CREATING
         val verify = verify()
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
         progressTracker.currentStep = VERIFYING
         progressTracker.currentStep = SIGNING
-        val signedTransaction = verifyandsign(verify)
-        val session = (verifystate().participants - ourIdentity).map { initiateFlow(it) }.toSet().toList()
-        val transactionSignedbyAllParties = collectSignatures(signedTransaction,session)
+        val signedTransaction = verifyandsign(transaction = verify)
+        val session = initiateFlow(counterRef)
+        val transactionSignedbyAllParties = collectSignatures(transaction = signedTransaction,session =  listOf(session))
         progressTracker.currentStep = FINALISING
-        return recordVerify(transactionSignedbyAllParties,session)
+        return recordVerify(transaction = transactionSignedbyAllParties, session = listOf(session))
     }
     private fun verifystate():UserState
     {
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
         val input = inputStateref().state.data
-        return UserState(input.name, ourIdentity, counterparty, verify = true,linearId = id)
+        return UserState(input.name, ourIdentity, counterRef, verify = true,linearId = linearId)
     }
     private fun verify():TransactionBuilder
     {
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
         val notary = inputStateref().state.notary
         val command = Command(UserContract.Commands.Verify(),
-                listOf(counterparty.owningKey,ourIdentity.owningKey))
+                listOf(ourIdentity.owningKey,counterRef.owningKey))
         val builder = TransactionBuilder(notary = notary)
         builder.addInputState(inputStateref())
         builder.addOutputState(state = verifystate(),contract = UserContract.ID_Contracts)
@@ -63,8 +65,8 @@ class UserVerifyFlow(private val id: UniqueIdentifier, private val counterparty:
     }
     private fun inputStateref():StateAndRef<UserState>
     {
-        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(id))
-        return serviceHub.vaultService.queryBy<UserState>(criteria = criteria).states.single()
+        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
+        return serviceHub.vaultService.queryBy<UserState>(criteria = criteria).states.first()
     }
     private fun verifyandsign(transaction: TransactionBuilder): SignedTransaction
     {

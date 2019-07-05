@@ -3,20 +3,17 @@ package com.template.flows
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.UserContract
 import com.template.states.UserState
-import net.corda.core.contracts.Command
-import net.corda.core.contracts.StateAndRef
-import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.contracts.requireThat
+import net.corda.core.contracts.*
 import net.corda.core.flows.*
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
-import net.corda.core.transactions.SignedTransaction
-import net.corda.core.transactions.TransactionBuilder
+import net.corda.core.transactions.*
 import com.template.states.UserDetails
 
 @InitiatingFlow
 @StartableByRPC
 class UserUpdateFlow (private var name: UserDetails,
+                      private val counterparty: String,
                       private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
 {
     @Suspendable
@@ -24,9 +21,11 @@ class UserUpdateFlow (private var name: UserDetails,
     {
         val update = update()
         val signedTransaction = verifyandsign(update)
-        val session = (updatestate().participants - ourIdentity).map { initiateFlow(it) }.toSet().toList()
-        val transactionsignedbyall = collectsignatures(signedTransaction,session)
-        return recordUpdate(transactionsignedbyall,session)
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
+        val session = initiateFlow(counterRef)
+        val transactionsignedbyall = collectsignatures(signedTransaction, listOf(session))
+        return recordUpdate(transactionsignedbyall,listOf(session))
 
     }
     private fun updatestate():UserState
@@ -36,7 +35,9 @@ class UserUpdateFlow (private var name: UserDetails,
         if (name.age == "") name.age = input.name.age
         if (name.gender == "") name.gender = input.name.gender
         if (name.address == "") name.address = input.name.address
-        return UserState(name, ourIdentity, input.receiver, input.verify, linearId = linearId)
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
+        return UserState(name, ourIdentity, counterRef, input.verify, linearId = linearId)
     }
     private fun inputstateref(): StateAndRef<UserState>
     {
