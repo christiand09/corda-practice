@@ -10,7 +10,6 @@ import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
-import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
@@ -22,7 +21,7 @@ import net.corda.core.utilities.unwrap
 @StartableByRPC
 class ClientUpdateRegisterFlow(
         private var calls: Calls,
-        private val counterparty: Party,
+        private val counterparty: String,
         private val linearId: UniqueIdentifier): FlowLogic<SignedTransaction>(){
 
     /* Declare Transaction steps*/
@@ -55,7 +54,9 @@ class ClientUpdateRegisterFlow(
         progressTracker.currentStep = RECORD_TRANSACTION
         val unUpdated= userUpdate()
         val signedTransaction = verifyAndSign(unUpdated)
-        val sessions= initiateFlow(counterparty)
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
+        val sessions= initiateFlow(counterRef)
         val transactionSignedByAllParties: SignedTransaction=collectSignature(signedTransaction, listOf(sessions))
         sessions.send(calls)
         return recordTransaction(transactionSignedByAllParties, listOf(sessions))
@@ -81,12 +82,15 @@ class ClientUpdateRegisterFlow(
         if(calls.religion == "")
             calls.religion = input.calls.religion
 
-        return ClientState(calls,ourIdentity,counterparty,true,input.linearId)
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
+
+        return ClientState(calls,ourIdentity,counterRef,true,input.linearId)
 
     }
     private fun userUpdate(): TransactionBuilder{
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
-        val cmd = Command(ClientContract.Commands.Update(), listOf(ourIdentity.owningKey, counterparty.owningKey))
+        val cmd = Command(ClientContract.Commands.Update(), outputState().participants.map { it.owningKey })
         return TransactionBuilder (notary)
                 .addInputState(inputStateRef())
                 .addOutputState(outputState(), ID)

@@ -9,7 +9,6 @@ import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
-import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
@@ -18,7 +17,7 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class ClientVerifyFlow (private val counterparty: Party, private  val linearId: UniqueIdentifier): FlowLogic<SignedTransaction>(){
+class ClientVerifyFlow (private val counterparty: String, private  val linearId: UniqueIdentifier): FlowLogic<SignedTransaction>(){
 
     /* Declare Transaction steps*/
 
@@ -94,9 +93,11 @@ class ClientVerifyFlow (private val counterparty: Party, private  val linearId: 
     override fun call(): SignedTransaction {
        val unVerified = userVerified()
         val signedTransaction = verifyAndSign(unVerified)
-        val sessions=(outputState().participants-ourIdentity).map {initiateFlow(it)}.toList()
-        val transactionSignedByAllParties: SignedTransaction=collectSignature(signedTransaction, sessions)
-        return recordTransaction(transactionSignedByAllParties, sessions)
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
+        val sessions=initiateFlow(counterRef)
+        val transactionSignedByAllParties: SignedTransaction=collectSignature(signedTransaction, listOf(sessions) )
+        return recordTransaction(transactionSignedByAllParties, listOf(sessions) )
     }
     private fun inputStateRef(): StateAndRef<ClientState> {
         val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
@@ -104,12 +105,18 @@ class ClientVerifyFlow (private val counterparty: Party, private  val linearId: 
     }
     private fun outputState():ClientState{
         val input = inputStateRef().state.data
-        return ClientState(input.calls,input.sender,counterparty,true,input.linearId)
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
+
+        return ClientState(input.calls,ourIdentity,counterRef,true,input.linearId)
     }
     private fun userVerified(): TransactionBuilder{
-        val notary = serviceHub.networkMapCache.notaryIdentities.first()
-        val cmd = Command ( ClientContract.Commands.Register(), outputState().participants.map {it.owningKey})
+        val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
+        val notary = inputStateRef().state.notary
+        val cmd = Command ( ClientContract.Commands.Verify(), listOf(ourIdentity.owningKey, counterRef.owningKey))
         return TransactionBuilder(notary)
+                .addInputState(inputStateRef())
                 .addOutputState(outputState(), ID)
                 .addCommand(cmd)
     }
