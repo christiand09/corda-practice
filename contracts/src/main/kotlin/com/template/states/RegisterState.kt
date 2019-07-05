@@ -1,9 +1,7 @@
 package com.template.states
 
 import com.template.contracts.RegisterContract
-import net.corda.core.contracts.BelongsToContract
-import net.corda.core.contracts.LinearState
-import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.contracts.*
 import net.corda.core.identity.Party
 import net.corda.core.serialization.CordaSerializable
 
@@ -25,3 +23,6 @@ data class ClientInfo (var firstName: String,
                      var age: String,
                      var gender: String,
                      var address: String)
+
+
+

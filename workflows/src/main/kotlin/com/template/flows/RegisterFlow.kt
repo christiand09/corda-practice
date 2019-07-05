@@ -44,9 +44,11 @@ class RegisterFlow (private val clientInfo: ClientInfo) : FlowLogic<SignedTransa
         progressTracker.currentStep = FINALIZING
         return recordRegistration(transactionSignedByAllParties, session)
     }
+
     private fun regState(): RegisterState {
         return RegisterState(clientInfo,ourIdentity,ourIdentity,false)
     }
+
     private fun register(regState: RegisterState): TransactionBuilder {
         val notary: Party = serviceHub.networkMapCache.notaryIdentities.first()
         val regCommand = Command(RegisterContract.Commands.Register(), ourIdentity.owningKey)
@@ -55,13 +57,16 @@ class RegisterFlow (private val clientInfo: ClientInfo) : FlowLogic<SignedTransa
         builder.addCommand(regCommand)
         return builder
     }
+
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
         transaction.verify(serviceHub)
         return serviceHub.signInitialTransaction(transaction)
     }
+
     @Suspendable
     private fun collectSignature (transaction: SignedTransaction, session: List<FlowSession>
     ): SignedTransaction = subFlow(CollectSignaturesFlow(transaction, session))
+
     @Suspendable
     private fun recordRegistration(transaction: SignedTransaction,session: List<FlowSession>
     ): SignedTransaction = subFlow(FinalityFlow(transaction,session))

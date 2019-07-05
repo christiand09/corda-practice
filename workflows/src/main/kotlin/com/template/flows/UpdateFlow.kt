@@ -4,13 +4,11 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.RegisterContract
 import com.template.states.ClientInfo
 import com.template.states.RegisterState
-import net.corda.core.concurrent.firstOf
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
-import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction

@@ -15,6 +15,13 @@ class RegisterContract : Contract {
         val REGISTER_CONTRACT_ID = RegisterContract::class.qualifiedName!!
     }
 
+    // Used to indicate the transaction's intent.
+    interface Commands : CommandData {
+        class Register : TypeOnlyCommandData(), Commands
+        class Verify : TypeOnlyCommandData(), Commands
+        class Update : TypeOnlyCommandData(), Commands
+        class UpdateRegister : TypeOnlyCommandData(), Commands
+    }
 
     // A transaction is valid if the verify() function of the contract of all the transaction's input and output states
     // does not throw an exception.
@@ -41,13 +48,8 @@ class RegisterContract : Contract {
             is Commands.UpdateRegister -> requireThat {
 
             }
+
+            }
         }
     }
-    // Used to indicate the transaction's intent.
-    interface Commands : CommandData {
-        class Register : TypeOnlyCommandData(), Commands
-        class Verify : TypeOnlyCommandData(), Commands
-        class Update : TypeOnlyCommandData(), Commands
-        class UpdateRegister : TypeOnlyCommandData(), Commands
-    }
-}
+
