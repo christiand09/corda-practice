@@ -20,7 +20,7 @@ import net.corda.core.transactions.TransactionBuilder
 @InitiatingFlow
 @StartableByRPC
 class UpdateUserFlow( private val formSet: formSet,
-                     private val receiver: Party,
+                     private val receiver: String,
                       private val linearId: UniqueIdentifier = UniqueIdentifier()
                     ): FlowLogic<SignedTransaction>(){
 
@@ -28,9 +28,11 @@ class UpdateUserFlow( private val formSet: formSet,
     override fun call():SignedTransaction {
         val transaction: TransactionBuilder = transaction()
         val signedTransaction: SignedTransaction = verifyAndSign(transaction)
-        val sessions = (outputState().participants - ourIdentity).map { initiateFlow(it) }.toList()
-        val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, sessions)
-        return recordTransaction(transactionSignedByAllParties, sessions)
+        val counterRef = serviceHub.identityService.partiesFromName(receiver, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $receiver.")
+        val sessions = initiateFlow(counterRef)
+        val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, listOf(sessions))
+        return recordTransaction(transactionSignedByAllParties, listOf(sessions))
     }
 
     private fun inputStateRef(): StateAndRef<MyState> {
@@ -40,11 +42,13 @@ class UpdateUserFlow( private val formSet: formSet,
 
     private fun outputState(): MyState{
         val input = inputStateRef().state.data
+        val counterRef = serviceHub.identityService.partiesFromName(receiver, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $receiver.")
         //return MyState(firstName,lastName,age,gender,address,ourIdentity,input.receiver,input.approvals, input.participants, input.linearId)
                 return MyState(
                         formSet,
                         ourIdentity,
-                        input.receiver,
+                        counterRef,
                         input.approvals,
                         input.participants,
                         input.linearId

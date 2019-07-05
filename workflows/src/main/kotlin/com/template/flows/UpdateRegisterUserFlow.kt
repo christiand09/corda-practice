@@ -22,7 +22,7 @@ import net.corda.core.utilities.unwrap
 @StartableByRPC
 class UpdateRegisterUserFlow(
                      private val formSet: formSet,
-                     private val receiver: Party,
+                     private val receiver: String,
                      private val linearId: UniqueIdentifier = UniqueIdentifier()): FlowLogic<SignedTransaction>(){
 
     @Suspendable
@@ -30,7 +30,9 @@ class UpdateRegisterUserFlow(
         val transaction: TransactionBuilder = transaction()
         val signedTransaction: SignedTransaction = verifyAndSign(transaction)
 //        val sessions = (outputState().participants - ourIdentity).map { initiateFlow(it) }.toList()
-        val sessions = initiateFlow(receiver)
+        val counterRef = serviceHub.identityService.partiesFromName(receiver, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $receiver.")
+        val sessions = initiateFlow(counterRef)
         sessions.send(formSet)
         val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, listOf(sessions))
         return recordTransaction(transactionSignedByAllParties, listOf(sessions))
@@ -44,7 +46,8 @@ class UpdateRegisterUserFlow(
     private fun outputState(): MyState {
         val input = inputStateRef().state.data
         //return MyState(firstName,lastName,age,gender,address,ourIdentity,input.receiver,input.approvals, input.participants, input.linearId)
-
+        val counterRef = serviceHub.identityService.partiesFromName(receiver, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $receiver.")
         when {
             formSet.firstName == "" -> formSet.firstName = inputStateRef().state.data.formSet.firstName
         }
@@ -64,7 +67,7 @@ class UpdateRegisterUserFlow(
         return MyState(
                 formSet,
                 ourIdentity,
-                receiver,
+                counterRef,
                 approvals = true,
                 //input.participants,
                 linearId = linearId

@@ -56,8 +56,8 @@ class UserAccountController(
         }
         val stat = "status" to status
         val mess = if (status==HttpStatus.CREATED){
-            "message" to "Successful in getting ContractState of type UserAccountState"}
-        else{ "message" to "Failed to get ContractState of type UserAccountState"}
+            "message" to "Successful in getting all states"}
+        else{ "message" to "Failed to get all states"}
         val res = "result" to result
         return ResponseEntity.status(status).body(mapOf(stat,mess,res))
     }
@@ -67,9 +67,9 @@ class UserAccountController(
 
      */
     @PostMapping(value = "/states/user/create", produces = arrayOf("application/json"))
-    private fun createUser(@RequestBody createUserAccount: createUserAccount) : ResponseEntity<Map<String,Any>> {
+    private fun createUser(@RequestBody createUserAccount: createUserModel) : ResponseEntity<Map<String,Any>> {
         val (status, result) = try {
-            val user = createUserAccount(
+            val user = createUserModel(
                     formSet = createUserAccount.formSet
             )
            val flowReturn = proxy.startFlowDynamic(
@@ -89,8 +89,8 @@ class UserAccountController(
         }
         val stat = "status" to status
         val mess = if (status==HttpStatus.CREATED){
-            "message" to "Successful in creating ContractState of type UserAccountState"}
-        else{ "message" to "Failed to create ContractState of type UserAccountState"}
+            "message" to "Successful in registering a State"}
+        else{ "message" to "Failed to register a State"}
         val res = "result" to result
         return ResponseEntity.status(status).body(mapOf(stat,mess,res))
     }
@@ -112,20 +112,78 @@ class UserAccountController(
                     user.linearId
             )
             flowHandlerCompletion.flowHandlerCompletion(flowReturn)
-//            val out = registerFlow.use { it.returnValue.getOrThrow() }
-//            val userStateRef = proxy.vaultQueryBy<MyState>().states.last()
-//            val userStateData = userStateRef.state.data
-//            val list = userAccountModel(
-//                    formSet = userStateData.formSet
-//            )
             HttpStatus.CREATED to verifyUserAccount
         }catch (e: Exception){
             HttpStatus.BAD_REQUEST to "$e"
         }
         val stat = "status" to status
         val mess = if (status==HttpStatus.CREATED){
-            "message" to "Successful in creating ContractState of type UserAccountState"}
-        else{ "message" to "Failed to create ContractState of type UserAccountState"}
+            "message" to "Successful in verifying a user"}
+        else{ "message" to "Failed to verify a user"}
+        val res = "result" to result
+        return ResponseEntity.status(status).body(mapOf(stat,mess,res))
+    }
+    /**
+
+     * UPDATE - UpdateUserFlow
+
+     */
+    @PostMapping(value = "/states/user/update", produces = arrayOf("application/json"))
+    private fun updateUser(@RequestBody updateUserAccount: updateUserModel) : ResponseEntity<Map<String,Any>> {
+        val (status, result) = try {
+            val user = updateRegisterUserModel(
+                    formSet = updateUserAccount.formSet,
+                    receiver = updateUserAccount.receiver,
+                    linearId = updateUserAccount.linearId
+            )
+            val flowReturn  = proxy.startFlowDynamic(
+                    UpdateUserFlow::class.java,
+                    user.formSet,
+                    user.receiver,
+                    user.linearId
+            )
+            flowHandlerCompletion.flowHandlerCompletion(flowReturn)
+            HttpStatus.CREATED to updateUserAccount
+        }catch (e: Exception){
+            HttpStatus.BAD_REQUEST to "$e"
+        }
+        val stat = "status" to status
+        val mess = if (status==HttpStatus.CREATED){
+            "message" to "Successful in Updating State"}
+        else{ "message" to "Failed to Update State"}
+        val res = "result" to result
+        return ResponseEntity.status(status).body(mapOf(stat,mess,res))
+    }
+
+    /**
+
+     * UPDATE_REGISTER - UpdateRegisterUserFlow
+
+     */
+
+    @PostMapping(value = "/states/user/updateregister", produces = arrayOf("application/json"))
+    private fun updateRegisterUser(@RequestBody updateRegisterUserAccount: updateRegisterUserModel) : ResponseEntity<Map<String,Any>> {
+        val (status, result) = try {
+            val user = updateRegisterUserModel(
+                    formSet = updateRegisterUserAccount.formSet,
+                    receiver = updateRegisterUserAccount.receiver,
+                    linearId = updateRegisterUserAccount.linearId
+            )
+            val flowReturn  = proxy.startFlowDynamic(
+                    UpdateRegisterUserFlow::class.java,
+                    user.formSet,
+                    user.receiver,
+                    user.linearId
+            )
+            flowHandlerCompletion.flowHandlerCompletion(flowReturn)
+            HttpStatus.CREATED to updateRegisterUserAccount
+        }catch (e: Exception){
+            HttpStatus.BAD_REQUEST to "$e"
+        }
+        val stat = "status" to status
+        val mess = if (status==HttpStatus.CREATED){
+            "message" to "Successful in Updating a State and Registered it on Counter party"}
+        else{ "message" to "Failed to Update a State and Register on Counter party"}
         val res = "result" to result
         return ResponseEntity.status(status).body(mapOf(stat,mess,res))
     }

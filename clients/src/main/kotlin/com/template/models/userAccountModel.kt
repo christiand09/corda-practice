@@ -12,11 +12,22 @@ data class userAccountModel(
         val linearId: UniqueIdentifier
         )
 
-data class createUserAccount @JsonCreator constructor(
+data class createUserModel @JsonCreator constructor(
         var formSet : formSet
 )
 
 data class verifyUserModel @JsonCreator constructor(
+        val receiver: String,
+        val linearId: UniqueIdentifier = UniqueIdentifier()
+)
+
+data class updateUserModel @JsonCreator constructor(
+        val formSet: formSet,
+        val receiver: String,
+        val linearId: UniqueIdentifier = UniqueIdentifier()
+)
+data class updateRegisterUserModel @JsonCreator constructor(
+        val formSet: formSet,
         val receiver: String,
         val linearId: UniqueIdentifier = UniqueIdentifier()
 )
