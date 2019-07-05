@@ -45,6 +45,9 @@ class RegisterFlow (private val name: Name) : FlowLogic<SignedTransaction>()
         progressTracker.currentStep = VERIFYING
         progressTracker.currentStep = SIGNING
         val signedTransaction = verifyAndSign(transaction = registration)
+//        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+//                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+//        val sessions = initiateFlow(counterRef)
         val sessions = emptyList<FlowSession>() // empty because the owner's signature is just needed
         val transactionSignedByParties = collectSignature(transaction = signedTransaction, sessions = sessions)
 
@@ -55,9 +58,12 @@ class RegisterFlow (private val name: Name) : FlowLogic<SignedTransaction>()
 
     private fun outState(): RegisterState
     {
+//        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+//                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
         return RegisterState(
                 name,
                 ourIdentity,
+//                counterRef,
                 ourIdentity,
                 false
         )

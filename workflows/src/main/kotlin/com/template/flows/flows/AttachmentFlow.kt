@@ -74,7 +74,7 @@ class AttachmentFlow (private val counterParty: String, private val attachId: Se
                 Command(AttachmentContract.Attach,
                         outState().participants.map { it.owningKey })
 
-        return TransactionBuilder(notary = notary).withItems(StateAndContract(outState(), contract), attachmentCommand)
+        return TransactionBuilder(notary = notary).withItems(StateAndContract(outState(), contract), attachId, attachmentCommand)
     }
 
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction
