@@ -3,10 +3,9 @@ package com.template.flows.flows
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.RegisterContract
 import com.template.states.RegisterState
+import net.corda.core.contracts.*
 import net.corda.core.contracts.Command
-import net.corda.core.contracts.StateAndRef
-import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.contracts.requireThat
+import net.corda.core.contracts.StateAndContract
 import net.corda.core.flows.*
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
@@ -27,15 +26,16 @@ class VerifyFlow (private val counterParty: String,
 
     companion object
     {
-        object CREATING : ProgressTracker.Step("Creating registration!")
-        object SIGNING : ProgressTracker.Step("Signing registration!")
-        object VERIFYING : ProgressTracker.Step("Verifying registration!")
-        object FINALISING : ProgressTracker.Step("Finalize registration!")
+        object CREATING : ProgressTracker.Step("Creating verification!")
+        object SIGNING : ProgressTracker.Step("Signing verification!")
+        object VERIFYING : ProgressTracker.Step("Verifying verification!")
+        object NOTARIZING : ProgressTracker.Step("Notarize verification")
+        object FINALISING : ProgressTracker.Step("Finalize verification!")
         {
             override fun childProgressTracker() = FinalityFlow.tracker()
         }
 
-        fun tracker() = ProgressTracker(CREATING, SIGNING, VERIFYING, FINALISING)
+        fun tracker() = ProgressTracker(CREATING, SIGNING, VERIFYING, NOTARIZING, FINALISING)
     }
 
     @Suspendable
@@ -49,10 +49,10 @@ class VerifyFlow (private val counterParty: String,
         val signedTransaction = verifyAndSign(transaction = verification)
         val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
             ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
-//        val sessions = (outState().participants - ourIdentity).map { initiateFlow(it) }.toSet().toList()
         val sessions = initiateFlow(counterRef)
         val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = listOf(sessions))
 
+        progressTracker.currentStep = NOTARIZING
         progressTracker.currentStep = FINALISING
         return verifyRegistration(transaction = transactionSignedByAllParties, sessions = listOf(sessions))
     }
@@ -79,17 +79,12 @@ class VerifyFlow (private val counterParty: String,
 
     private fun verify(): TransactionBuilder
     {
-        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
-                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
         val notary = inputStateRef().state.notary
         val verifyCommand =
                 Command(RegisterContract.Commands.Verify(),
-                        listOf(ourIdentity.owningKey, counterRef.owningKey))
-        val builder = TransactionBuilder(notary = notary)
-        builder.addInputState(inputStateRef())
-        builder.addOutputState(state = outState(), contract = RegisterContract.REGISTER_ID)
-        builder.addCommand(verifyCommand)
-        return builder
+                        outState().participants.map { it.owningKey })
+
+        return TransactionBuilder(notary = notary).withItems(inputStateRef(), StateAndContract(state = outState(), contract = RegisterContract.REGISTER_ID), verifyCommand)
     }
 
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction

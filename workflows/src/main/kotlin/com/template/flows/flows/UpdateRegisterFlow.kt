@@ -31,14 +31,15 @@ class UpdateRegisterFlow (private var name: Name,
 
     companion object
     {
-        object CREATING : ProgressTracker.Step("Creating registration!")
-        object SIGNING : ProgressTracker.Step("Signing registration!")
-        object VERIFYING : ProgressTracker.Step("Verifying registration!")
-        object FINALISING : ProgressTracker.Step("Finalize registration!") {
+        object CREATING : ProgressTracker.Step("Creating update and register!")
+        object SIGNING : ProgressTracker.Step("Signing update and register!")
+        object VERIFYING : ProgressTracker.Step("Verifying update and register!")
+        object NOTARIZING : ProgressTracker.Step("Notarizing update and register!")
+        object FINALISING : ProgressTracker.Step("Finalize update and register!") {
             override fun childProgressTracker() = FinalityFlow.tracker()
         }
 
-        fun tracker() = ProgressTracker(CREATING, SIGNING, VERIFYING, FINALISING)
+        fun tracker() = ProgressTracker(CREATING, SIGNING, VERIFYING, NOTARIZING, FINALISING)
     }
 
     @Suspendable
@@ -57,7 +58,7 @@ class UpdateRegisterFlow (private var name: Name,
         val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = listOf(sessions))
 
         progressTracker.currentStep = FINALISING
-
+        progressTracker.currentStep = NOTARIZING
         return verifyRegistration(transaction = transactionSignedByAllParties, sessions = listOf(sessions))
     }
 
@@ -137,7 +138,7 @@ class UpdateRegisterFlowResponder (val flowSession: FlowSession) : FlowLogic<Sig
         {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
                 val output = stx.tx.outputs.single().data
-                "This must be an update transaction." using (output is RegisterState)
+                "This must be an update and register transaction." using (output is RegisterState)
             }
         }
         val payload = flowSession.receive(Name::class.java).unwrap { it }

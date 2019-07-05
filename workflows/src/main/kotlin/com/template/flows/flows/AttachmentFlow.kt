@@ -1,29 +1,23 @@
 package com.template.flows.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.template.contracts.RegisterContract
-import com.template.states.Name
-import com.template.states.RegisterState
+import com.template.contracts.AttachmentContract
+import com.template.states.AttachmentState
 import net.corda.core.contracts.*
 import net.corda.core.contracts.Command
-import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.StateAndContract
+import net.corda.core.crypto.SecureHash
 import net.corda.core.flows.*
-import net.corda.core.flows.FlowException
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.ReceiveFinalityFlow
-import net.corda.core.node.services.queryBy
-import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class UpdateFlow (private var name: Name,
-                  private val counterParty: String,
-                  private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
+class AttachmentFlow (private val counterParty: String, private val attachId: SecureHash.SHA256) : FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
 
@@ -59,50 +53,28 @@ class UpdateFlow (private var name: Name,
         return verifyRegistration(transaction = transactionSignedByAllParties, sessions = listOf(sessions))
     }
 
-    private fun inputStateRef(): StateAndRef<RegisterState> {
-        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-        return serviceHub.vaultService.queryBy<RegisterState>(criteria = criteria).states.single()
-    }
-
-    private fun outState(): RegisterState
+    private fun outState(): AttachmentState
     {
-        val input = inputStateRef().state.data
-
-        if (name.firstname == "")
-            name.firstname = input.name.firstname
-        if (name.lastname == "")
-            name.lastname = input.name.lastname
-        if (name.age == "")
-            name.age = input.name.age
-        if (name.gender == "")
-            name.gender = input.name.gender
-        if (name.address == "")
-            name.address = input.name.address
-
-        if (!input.approved)
-            throw FlowException("The registrant must be approved before it can be update.")
-
         val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
                 ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
 
-        return RegisterState(
-                name,
+        return AttachmentState(
+                attachId,
                 ourIdentity,
-                counterRef,
-                approved = true,
-                linearId = linearId
+                counterRef
         )
     }
 
     private fun update(): TransactionBuilder
     {
-        val contract = RegisterContract.REGISTER_ID
-        val notary = inputStateRef().state.notary
-        val updateCommand =
-                Command(RegisterContract.Commands.Update(),
+
+        val contract = AttachmentContract.ATTACHMENT_PROGRAM_ID
+        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+        val attachmentCommand =
+                Command(AttachmentContract.Attach,
                         outState().participants.map { it.owningKey })
 
-        return TransactionBuilder(notary = notary).withItems(inputStateRef(), StateAndContract(outState(), contract), updateCommand)
+        return TransactionBuilder(notary = notary).withItems(StateAndContract(outState(), contract), attachmentCommand)
     }
 
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction
@@ -124,8 +96,8 @@ class UpdateFlow (private var name: Name,
     ): SignedTransaction = subFlow(FinalityFlow(transaction, sessions))
 }
 
-@InitiatedBy(UpdateFlow::class)
-class UpdateFlowResponder (val flowSession: FlowSession) : FlowLogic<SignedTransaction>()
+@InitiatedBy(AttachmentFlow::class)
+class AttachmentFlowResponder (val flowSession: FlowSession) : FlowLogic<SignedTransaction>()
 {
     @Suspendable
     override fun call(): SignedTransaction
@@ -134,10 +106,9 @@ class UpdateFlowResponder (val flowSession: FlowSession) : FlowLogic<SignedTrans
         {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
                 val output = stx.tx.outputs.single().data
-                "This must be an update transaction." using (output is RegisterState)
+                "This must be an attachment transaction." using (output is AttachmentState)
             }
         }
-
         val signedTransaction = subFlow(signedTransactionFlow)
 
         return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = signedTransaction.id))
