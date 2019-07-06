@@ -4,7 +4,7 @@ import com.template.contracts.UserContract
 import net.corda.core.contracts.BelongsToContract
 import net.corda.core.contracts.LinearState
 import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.identity.AbstractParty
+import net.corda.core.identity.Party
 
 
 @BelongsToContract(UserContract::class)
@@ -13,10 +13,10 @@ data class UserState(
         val age: Int,
         val verified: Boolean = false,
         override val linearId: UniqueIdentifier = UniqueIdentifier(),
-        override val participants: List<AbstractParty>
+        override val participants: List<Party>
 ) : LinearState {
 
-    fun verify(parties: List<AbstractParty>) = copy(verified = true, participants = parties)
+    fun verify(parties: List<Party>) = copy(verified = true, participants = parties)
 
 }
 
