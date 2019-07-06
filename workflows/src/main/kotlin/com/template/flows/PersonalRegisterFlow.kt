@@ -5,6 +5,7 @@ import com.template.contracts.PersonalContract
 import com.template.contracts.PersonalContract.Companion.PERSONALID
 import com.template.states.PersonalState
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
 import net.corda.core.node.services.queryBy
@@ -23,28 +24,31 @@ class PersonalRegisterFlow(private val fullName: String,
 
     @Suspendable
     override fun call(): SignedTransaction {
-        val personalRegister = personalRegister (outputState())
+        val personalRegister = personalRegister ()
         val signedTransaction = verifyAndSign (personalRegister)
         val session = emptyList<FlowSession>()
         val transactionSigned : SignedTransaction = collectSignature (signedTransaction, session)
         return recordTransaction (transactionSigned,session)
     }
 
-private fun outputState () : PersonalState {
-    return PersonalState(fullName,age,birthDate,address,contactNumber,status,ourIdentity,ourIdentity,false)
-}
-    private fun personalRegister(state:PersonalState):TransactionBuilder{
+    private fun personalRegister():TransactionBuilder{
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
         val inputStatesRef = serviceHub.vaultService.queryBy<PersonalState>().states
         val searchName = inputStatesRef.find { stateAndRef -> stateAndRef.state.data.fullName != fullName }
-                ?: throw IllegalArgumentException("error!")
 
+        lateinit var outputState: ContractState
+
+        if(searchName == null){
+            print("no name found")
+        }else{
+            outputState = PersonalState(fullName,age,birthDate,address,contactNumber,status,ourIdentity,ourIdentity,false)
+        }
 
 
         val cmd = Command (PersonalContract.Commands.Register(),ourIdentity.owningKey)
         return TransactionBuilder(notary)
-                .addOutputState(state, PERSONALID)
+                .addOutputState(outputState, PERSONALID)
                 .addCommand(cmd)
     }
 
@@ -67,5 +71,24 @@ private fun outputState () : PersonalState {
 
 
 
+
+
 }
 
+@InitiatedBy(PersonalRegisterFlow::class)
+class PersonalREgisterFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+
+    @Suspendable
+    override fun call(): SignedTransaction {
+        val signedTransactionFlow = object : SignTransactionFlow(flowSession) {
+            override fun checkTransaction(stx: SignedTransaction) = requireThat {
+                val output = stx.tx.outputs.single().data
+                "This must be an IOU transaction" using (output is PersonalState)
+            }
+        }
+
+        val txWeJustSignedId = subFlow(signedTransactionFlow)
+
+        return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
+    }
+}
