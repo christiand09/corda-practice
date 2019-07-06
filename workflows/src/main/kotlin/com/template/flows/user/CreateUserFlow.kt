@@ -14,7 +14,7 @@ import net.corda.core.transactions.TransactionBuilder
 @InitiatingFlow
 @StartableByRPC
 class CreateUserFlow(private val name: Name,
-                     private val age: Int) : FlowLogic<SignedTransaction>() {
+                     private val age: Int) : UserBaseFlow() {
     @Suspendable
     override fun call(): SignedTransaction {
         val transaction = transaction()
@@ -26,7 +26,7 @@ class CreateUserFlow(private val name: Name,
     }
 
     private fun transaction(): TransactionBuilder {
-        val notary: Party = serviceHub.networkMapCache.notaryIdentities.first()
+        val notary = firstNotary
 
         val output = UserState(name, age, participants = listOf(ourIdentity))
         val issueCommand =
@@ -37,20 +37,6 @@ class CreateUserFlow(private val name: Name,
         return builder
     }
 
-    private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
-        transaction.verify(serviceHub)
-        return serviceHub.signInitialTransaction(transaction)
-    }
-
-    @Suspendable
-    private fun collectSignature(
-            transaction: SignedTransaction,
-            sessions: List<FlowSession>
-    ): SignedTransaction = subFlow(CollectSignaturesFlow(transaction, sessions))
-
-    @Suspendable
-    private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
-            subFlow(FinalityFlow(transaction, sessions))
 }
 //
 //@InitiatedBy(CreateUserFlow::class)
