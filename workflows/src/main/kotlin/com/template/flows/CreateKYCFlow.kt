@@ -26,9 +26,6 @@ class CreateKYCFlow(private val name: Name,
         progressTracker.currentStep = INITIALIZING
         val transaction = transaction()
         val signedTransaction = verifyAndSign(transaction)
-        println("*****************************************************************************")
-        println(allParties())
-        println("*****************************************************************************")
         return recordTransaction(signedTransaction, emptyList())
     }
 

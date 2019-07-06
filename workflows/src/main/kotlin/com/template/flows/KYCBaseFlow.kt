@@ -30,7 +30,7 @@ abstract class UserBaseFlow : FlowLogic<SignedTransaction>() {
                 Vault.StateStatus.UNCONSUMED, null)
 
         return serviceHub.vaultService.queryBy<KYCState>(queryCriteria).states.singleOrNull()
-                ?: throw FlowException("User with id $linearId not found.")
+                ?: throw FlowException("KYC with id $linearId not found.")
     }
 
      fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
@@ -47,10 +47,14 @@ abstract class UserBaseFlow : FlowLogic<SignedTransaction>() {
         }
     }
 
-    fun stringToParty(parties : List<String>) : List<Party> {
+    fun listStringToParty(parties : List<String>) : List<Party> {
         return parties.map { party ->
             serviceHub.identityService.partiesFromName(party, false).single()
         }
+    }
+
+    fun stringToParty(party: String) : Party {
+        return serviceHub.identityService.partiesFromName(party, false).single()
     }
 
 

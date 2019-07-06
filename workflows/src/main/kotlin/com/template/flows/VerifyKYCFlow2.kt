@@ -14,39 +14,41 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class VerifyKYCFlow(private val id : String) : UserBaseFlow() {
+class VerifyKYCFlow2(private val id : String,
+                     private val party: String) : UserBaseFlow() {
 
     override val progressTracker = ProgressTracker(INITIALIZING, BUILDING, SIGNING, COLLECTING, FINALIZING)
 
     override fun call(): SignedTransaction {
 
         progressTracker.currentStep = INITIALIZING
+
         val transaction = transaction()
         val signedTransaction = verifyAndSign(transaction)
-        val sessions = (listStringToParty(allParties()) - ourIdentity).map{ initiateFlow(it)}
-        val transactionSignedByAllParties = collectSignature(signedTransaction, sessions)
-        return recordTransaction(transactionSignedByAllParties, sessions)
+        val session = initiateFlow(stringToParty(party))
+        val transactionSignedByAllParties = subFlow(CollectSignaturesFlow(signedTransaction, listOf(session)))
+        return subFlow(FinalityFlow(transactionSignedByAllParties, listOf(session)))
     }
 
     private fun transaction(): TransactionBuilder {
-        progressTracker.currentStep = BUILDING
+
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
+        val verifyCommand =
+                Command(KYCContract.Commands.Verify(), listOf(ourIdentity, stringToParty(party)).map { it.owningKey })
         val refState = getKYCByLinearId(UniqueIdentifier.fromString(id))
 
         val refStateData = refState.state.data
-        val output = refStateData.verify(listStringToParty(allParties()))
-        val verifyCommand = Command(KYCContract.Commands.Verify(), output.participants.map { it.owningKey })
-        val builder = TransactionBuilder(notary = notary)
-        builder.addInputState(refState)
-        builder.addOutputState(output, KYCContract.KYC_CONTRACT_ID)
-        builder.addCommand(verifyCommand)
-        return builder
+        val output = refStateData.verify(listOf(ourIdentity, stringToParty(party)))
+        return TransactionBuilder(notary)
+                .addInputState(refState)
+                .addOutputState(output, KYCContract.KYC_CONTRACT_ID)
+                .addCommand(verifyCommand)
     }
 
 }
 
-@InitiatedBy(VerifyKYCFlow::class)
-class VerifyKYCFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>() {
+@InitiatedBy(VerifyKYCFlow2::class)
+class VerifyKYC2FlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>() {
 
     @Suspendable
     override fun call(): SignedTransaction {
