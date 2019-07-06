@@ -1,4 +1,4 @@
-package com.template.flows.IOU
+package com.template.flows.iou
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.IOUContract
@@ -56,7 +56,7 @@ class IOUIssueFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTran
         val signTransactionFlow = object : SignTransactionFlow(flowSession) {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
                 val output = stx.tx.outputs.single().data
-                "This must be an IOU transaction" using (output is IOUState)
+                "This must be an iou transaction" using (output is IOUState)
             }
         }
         val signedTransaction = subFlow(signTransactionFlow)

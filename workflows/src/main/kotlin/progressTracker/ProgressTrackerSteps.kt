@@ -1,8 +1,7 @@
-package com.template.flows.progressTracker
+package progressTracker
 
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
-import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.ProgressTracker.Step
 
 object INITIALIZING : Step("Performing initial steps.")

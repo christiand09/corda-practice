@@ -3,24 +3,23 @@ package com.template.contracts
 import net.corda.core.contracts.*
 import net.corda.core.transactions.LedgerTransaction
 
-class KYCContract : Contract {
+class UserContract : Contract {
 
     companion object {
         @JvmStatic
-        val KYC_CONTRACT_ID = "com.template.contracts.KYCContract"
+        val USER_CONTRACT_ID = "com.template.contracts.UserContract"
     }
 
     interface Commands : CommandData {
         class Create : TypeOnlyCommandData(), Commands
         class Verify : TypeOnlyCommandData(), Commands
-        class Share : TypeOnlyCommandData(), Commands
     }
 
     override fun verify(tx: LedgerTransaction) {
         val command = tx.commands.requireSingleCommand<Commands>()
         when (command.value) {
             is Commands.Create -> requireThat {
-//                "No inputs should be consumed when issuing an iou." using (tx.inputs.isEmpty())
+                //                "No inputs should be consumed when issuing an iou." using (tx.inputs.isEmpty())
 //                "Only one output state should be created when issuing an iou." using (tx.outputs.size == 1)
 //                val iou = tx.outputStates.single() as IOUState
 //                "A newly issued iou must have a positive amount." using (iou.amount.quantity > 0)

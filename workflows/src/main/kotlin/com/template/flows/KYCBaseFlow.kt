@@ -2,7 +2,7 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.google.common.collect.ImmutableList
-import com.template.flows.progressTracker.*
+import progressTracker.*
 import com.template.states.KYCState
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier

@@ -2,7 +2,7 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.KYCContract
-import com.template.flows.progressTracker.*
+import progressTracker.*
 import com.template.states.KYCState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.UniqueIdentifier
@@ -48,7 +48,7 @@ class VerifyKYCFlow2(private val id : String,
 }
 
 @InitiatedBy(VerifyKYCFlow2::class)
-class VerifyKYC2FlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>() {
+class VerifyKYC2FlowResponder(val flowSession: FlowSession) : UserBaseFlow() {
 
     @Suspendable
     override fun call(): SignedTransaction {
