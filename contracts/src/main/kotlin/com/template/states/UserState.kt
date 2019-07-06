@@ -17,6 +17,7 @@ data class UserState(
 ) : LinearState {
 
     fun verify(parties: List<Party>) = copy(verified = true, participants = parties)
+    fun verify() = copy(verified = true)
 
 }
 

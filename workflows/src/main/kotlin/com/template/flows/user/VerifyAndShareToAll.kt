@@ -12,7 +12,7 @@ import net.corda.core.transactions.TransactionBuilder
 
 @InitiatingFlow
 @StartableByRPC
-class VerifyUserFlow2(private val id: String) : UserBaseFlow() {
+class VerifyAndShareToAll(private val id: String) : UserBaseFlow() {
     @Suspendable
     override fun call(): SignedTransaction {
         val transaction = transaction()
@@ -42,8 +42,8 @@ class VerifyUserFlow2(private val id: String) : UserBaseFlow() {
 
 }
 
-@InitiatedBy(VerifyUserFlow2::class)
-class VerifyUserFlow2Responder(val flowSession: FlowSession) : UserBaseFlow() {
+@InitiatedBy(VerifyAndShareToAll::class)
+class VerifyAndShareToAllResponder(val flowSession: FlowSession) : UserBaseFlow() {
 
     @Suspendable
     override fun call(): SignedTransaction {
