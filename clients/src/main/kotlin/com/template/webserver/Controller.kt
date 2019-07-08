@@ -22,10 +22,10 @@ class UserAccountController(
         private val rpc: NodeRPCConnection,
         private val flowHandlerCompletion : FlowHandlerCompletion
 ) {
-    companion object {
+        companion object {
         private val logger = LoggerFactory.getLogger(RestController::class.java)
     }
-    private val proxy = rpc.proxy
+        private val proxy = rpc.proxy
 
 
     /**
