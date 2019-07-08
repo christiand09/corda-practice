@@ -281,6 +281,19 @@ class Controller(rpc: NodeRPCConnection, private val flowHandlerCompletion :Flow
     /**
      * UPLOAD ATTACHMENT
      */
+
+    @PostMapping(value = "attachment")
+    private fun upload(@RequestParam file: MultipartFile, @RequestParam uploader: String): ResponseEntity<String> {
+        val filename = file.originalFilename
+        val hash: SecureHash =
+            proxy.uploadAttachmentWithMetadata(
+                    jar = file.inputStream,
+                    uploader = uploader,
+                    filename = filename!!
+            )
+        return ResponseEntity.created(URI.create("attachments/$hash")).body("Attachment uploaded with hash - $hash")
+    }
+
 //    @PostMapping(value = "attachments/upload")
 //    fun uploadAttachment(@RequestBody attachmentModel: AttachmentUploadModel) : ResponseEntity<Map<String, Any>>
 //    {
@@ -327,30 +340,30 @@ class Controller(rpc: NodeRPCConnection, private val flowHandlerCompletion :Flow
 //    }
 
 
-    private fun uploadZip(inputStream: InputStream, uploader: String, filename: String): AttachmentId {
-        val zipName = "$filename-${UUID.randomUUID()}.zip"
-        FileOutputStream(zipName).use { fileOutputStream ->
-            ZipOutputStream(fileOutputStream).use { zipOutputStream ->
-                val zipEntry = ZipEntry(filename)
-                zipOutputStream.putNextEntry(zipEntry)
-                inputStream.copyTo(zipOutputStream, 1024)
-            }
-        }
-        return FileInputStream(zipName).use { fileInputStream ->
-            val hash = proxy.uploadAttachmentWithMetadata(
-                    jar = fileInputStream,
-                    uploader = uploader,
-                    filename = filename
-            )
-            Files.deleteIfExists(Paths.get(zipName))
-            hash
-        }
-    }
+//    private fun uploadZip(inputStream: InputStream, uploader: String, filename: String): AttachmentId {
+//        val zipName = "$filename-${UUID.randomUUID()}.zip"
+//        FileOutputStream(zipName).use { fileOutputStream ->
+//            ZipOutputStream(fileOutputStream).use { zipOutputStream ->
+//                val zipEntry = ZipEntry(filename)
+//                zipOutputStream.putNextEntry(zipEntry)
+//                inputStream.copyTo(zipOutputStream, 1024)
+//            }
+//        }
+//        return FileInputStream(zipName).use { fileInputStream ->
+//            val hash = proxy.uploadAttachmentWithMetadata(
+//                    jar = fileInputStream,
+//                    uploader = uploader,
+//                    filename = filename
+//            )
+//            Files.deleteIfExists(Paths.get(zipName))
+//            hash
+//        }
+//    }
 
     /**
      * DOWNLOAD ATTACHMENT
      */
-    @GetMapping("/{hash}")
+    @GetMapping("attachment/{hash}")
     fun downloadByHash(@PathVariable hash: String): ResponseEntity<Resource> {
         val inputStream = InputStreamResource(proxy.openAttachment(SecureHash.parse(hash)))
         return ResponseEntity.ok().header(
