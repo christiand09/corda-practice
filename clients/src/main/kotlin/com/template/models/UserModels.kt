@@ -3,6 +3,7 @@ package com.template.models
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.template.states.UserDetails
 import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.crypto.SecureHash
 
 data class UserModel(
         val name: UserDetails,
@@ -26,4 +27,8 @@ data class updateandregister @JsonCreator constructor(
         val name: UserDetails,
         val counterparty: String,
         val linearId: UniqueIdentifier
+)
+data class uploadfileState @JsonCreator constructor(
+        val hash: String,
+        val counterparty: String
 )
