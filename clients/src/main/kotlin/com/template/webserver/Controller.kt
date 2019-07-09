@@ -52,7 +52,7 @@ class Controller(rpc: NodeRPCConnection, private val flowHandlerCompletion :Flow
 
     /**
      * Return all RegisterState*/
-    @GetMapping(value = "/states/all", produces = ["application/json"])
+    @GetMapping(value = "states/all", produces = ["application/json"])
     private fun getRegisterStates(): ResponseEntity<Map<String, Any>>
     {
         val (status, result) = try {
@@ -89,7 +89,7 @@ class Controller(rpc: NodeRPCConnection, private val flowHandlerCompletion :Flow
     /**
      * REGISTER - RegisterFlow
      */
-    @PostMapping(value = "/states/user/register", produces = ["application/json"])
+    @PostMapping(value = "states/user/register", produces = ["application/json"])
     private fun registerUser(@RequestBody registerAccount: UserRegisterModel) : ResponseEntity<Map<String, Any>>
     {
         val (status, result) = try {
@@ -242,7 +242,7 @@ class Controller(rpc: NodeRPCConnection, private val flowHandlerCompletion :Flow
     /**
      * ATTACHMENT -
      */
-    @GetMapping(value = "/attachments/all", produces = ["application/json"])
+    @GetMapping(value = "attachments/all", produces = ["application/json"])
     private fun getAttachmentStates(): ResponseEntity<Map<String, Any>>
     {
         val (status, result) = try {
@@ -278,87 +278,61 @@ class Controller(rpc: NodeRPCConnection, private val flowHandlerCompletion :Flow
      * ATTACHMENT FLOW
      */
 
+    @PostMapping(value = "attachments/user")
+    private fun saveAttachment(@RequestBody modelAttachment: AttachmentFlowModel) : ResponseEntity<Map<String, Any>>
+    {
+        val (status, result) = try {
+            val attachment = AttachmentFlowModel(
+                    counterParty = modelAttachment.counterParty,
+                    hash = modelAttachment.hash
+            )
+            val flowReturn = proxy.startFlowDynamic(
+                    AttachmentFlow::class.java,
+
+                    attachment.counterParty,
+                    attachment.hash
+            )
+            flowHandlerCompletion.flowHandlerCompletion(flowReturn)
+            HttpStatus.CREATED to modelAttachment
+        }
+        catch (e: Exception)
+        {
+            HttpStatus.BAD_REQUEST to e
+        }
+        val stat = "status" to status
+        val mess = if (status == HttpStatus.CREATED)
+        {
+            "mesasge" to "Successful"
+        }
+        else
+        {
+            "message" to "Failed"
+        }
+
+        val res = "result" to result
+        return ResponseEntity.status(status).body(mapOf(stat, mess, res))
+    }
+
     /**
      * UPLOAD ATTACHMENT
      */
 
-    @PostMapping(value = "attachment")
-    private fun upload(@RequestParam file: MultipartFile, @RequestParam uploader: String): ResponseEntity<String> {
-        val filename = file.originalFilename
-        val hash: SecureHash =
-            proxy.uploadAttachmentWithMetadata(
-                    jar = file.inputStream,
-                    uploader = uploader,
-                    filename = filename!!
-            )
-        return ResponseEntity.created(URI.create("attachments/$hash")).body("Attachment uploaded with hash - $hash")
+    @PostMapping(value = "attachments/upload")
+    private fun uploadAttachment(@RequestParam file: MultipartFile, @RequestParam uploader: String): ResponseEntity<String>
+    {
+        return try {
+            val filename = file.originalFilename
+            val hash: SecureHash =
+                    proxy.uploadAttachmentWithMetadata(
+                            jar = file.inputStream,
+                            uploader = uploader,
+                            filename = filename!!
+                    )
+            ResponseEntity.created(URI.create("attachments/$hash")).body("Attachment uploaded with hash - $hash")
+        } catch (e: Exception) {
+            ResponseEntity.badRequest().body("$e")
+        }
     }
-
-//    @PostMapping(value = "attachments/upload")
-//    fun uploadAttachment(@RequestBody attachmentModel: AttachmentUploadModel) : ResponseEntity<Map<String, Any>>
-//    {
-//        val (status, result) = try {
-//            val upload = AttachmentUploadModel(
-//                    file = attachmentModel.file,
-//                    uploader = attachmentModel.uploader
-//            )
-//            val filename =  upload.file.originalFilename
-//            val hash: SecureHash = if (!(upload.file.contentType == "zip" || upload.file.contentType == "jar")) {
-//                uploadZip(upload.file.inputStream, upload.uploader, filename!!)
-//            } else {
-//                proxy.uploadAttachmentWithMetadata(
-//                        jar = upload.file.inputStream,
-//                        uploader = upload.uploader,
-//                        filename = filename
-//                )
-//            }
-//            proxy.uploadAttachmentWithMetadata(
-//                    jar = upload.file.inputStream,
-//                    uploader = upload.uploader,
-//                    filename = filename
-//            )
-//            HttpStatus.CREATED to attachmentModel
-//
-//        }
-//        catch (e: Exception)
-//        {
-//            HttpStatus.BAD_REQUEST to e
-//        }
-//        val stat = "status" to status
-//        val mess = if (status == HttpStatus.CREATED)
-//        {
-//            "mesasge" to "Successful"
-//        }
-//        else
-//        {
-//            "message" to "Failed"
-//        }
-//
-//
-//        val res = "result" to result
-//        return ResponseEntity.status(status).body(mapOf(stat, mess, res))
-//    }
-
-
-//    private fun uploadZip(inputStream: InputStream, uploader: String, filename: String): AttachmentId {
-//        val zipName = "$filename-${UUID.randomUUID()}.zip"
-//        FileOutputStream(zipName).use { fileOutputStream ->
-//            ZipOutputStream(fileOutputStream).use { zipOutputStream ->
-//                val zipEntry = ZipEntry(filename)
-//                zipOutputStream.putNextEntry(zipEntry)
-//                inputStream.copyTo(zipOutputStream, 1024)
-//            }
-//        }
-//        return FileInputStream(zipName).use { fileInputStream ->
-//            val hash = proxy.uploadAttachmentWithMetadata(
-//                    jar = fileInputStream,
-//                    uploader = uploader,
-//                    filename = filename
-//            )
-//            Files.deleteIfExists(Paths.get(zipName))
-//            hash
-//        }
-//    }
 
     /**
      * DOWNLOAD ATTACHMENT
@@ -371,5 +345,4 @@ class Controller(rpc: NodeRPCConnection, private val flowHandlerCompletion :Flow
                 "attachment; filename=\"$hash.zip\""
         ).body(inputStream)
     }
-
 }

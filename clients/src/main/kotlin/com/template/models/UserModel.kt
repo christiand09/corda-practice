@@ -38,6 +38,11 @@ data class AttachmentModel @JsonCreator constructor(
     val linearId: UniqueIdentifier
 )
 
+data class AttachmentFlowModel @JsonCreator constructor(
+    val counterParty: String,
+    val hash: String
+)
+
 data class AttachmentUploadModel @JsonCreator constructor(
     val file: MultipartFile,
     val uploader: String

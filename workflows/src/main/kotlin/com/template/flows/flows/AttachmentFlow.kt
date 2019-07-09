@@ -17,7 +17,7 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class AttachmentFlow (private val counterParty: String, private val attachId: SecureHash.SHA256) : FlowLogic<SignedTransaction>()
+class AttachmentFlow (private val counterParty: String, private val attachId: String) : FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
 
@@ -55,11 +55,12 @@ class AttachmentFlow (private val counterParty: String, private val attachId: Se
 
     private fun outState(): AttachmentState
     {
+        val hash = SecureHash.sha256(attachId)
         val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
                 ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
 
         return AttachmentState(
-                attachId,
+                hash,
                 ourIdentity,
                 counterRef
         )
@@ -67,14 +68,14 @@ class AttachmentFlow (private val counterParty: String, private val attachId: Se
 
     private fun update(): TransactionBuilder
     {
-
+        val hash = SecureHash.sha256(attachId)
         val contract = AttachmentContract.ATTACHMENT_PROGRAM_ID
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
         val attachmentCommand =
                 Command(AttachmentContract.Attach,
                         outState().participants.map { it.owningKey })
 
-        return TransactionBuilder(notary = notary).withItems(StateAndContract(outState(), contract), attachId, attachmentCommand)
+        return TransactionBuilder(notary = notary).withItems(StateAndContract(outState(), contract), hash, attachmentCommand)
     }
 
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction
