@@ -20,8 +20,8 @@ import net.corda.core.node.services.vault.QueryCriteria
 
 @InitiatingFlow
 @StartableByRPC
-class RegisterUserFlow(private val formSet: formSet
-                     ): FlowLogic<SignedTransaction>() {
+class BurnOwnCashFlow(private val amountToBurn: Int,  private val linearId: UniqueIdentifier = UniqueIdentifier()
+): FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call(): SignedTransaction {
         val transaction: TransactionBuilder = transaction()
@@ -31,13 +31,19 @@ class RegisterUserFlow(private val formSet: formSet
         return recordTransaction(transactionSignedByAllParties, sessions)
     }
 
-    private fun outputState(): MyState
-    {
+    private fun inputStateRef(): StateAndRef<MyState> {
+        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
+        return serviceHub.vaultService.queryBy<MyState>(criteria).states.single()
+    }
+
+    private fun outputState(): MyState {
+        val input = inputStateRef().state.data
         return MyState(
-                formSet,
+                input.formSet,
                 ourIdentity,
                 ourIdentity,
-                cash = 0
+                input.cash - amountToBurn,
+                linearId = linearId
         )
     }
 
@@ -46,6 +52,7 @@ class RegisterUserFlow(private val formSet: formSet
 //        val MyState = MyState(firstName,lastName,age, gender,address, ourIdentity, ourIdentity)
         val issueCommand = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
         val builder = TransactionBuilder(notary = notary )
+        builder.addInputState(inputStateRef())
         builder.addOutputState(outputState(), MyContract.IOU_CONTRACT_ID)
         builder.addCommand(issueCommand)
         return builder
