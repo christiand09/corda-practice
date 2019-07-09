@@ -3,10 +3,11 @@ package com.template.flows.cashflows
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.CashContract
 import com.template.states.CashState
-import net.corda.core.contracts.*
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.StateAndRef
+import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
-import net.corda.core.flows.FlowException
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.ReceiveFinalityFlow
@@ -18,7 +19,7 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class CashSelfIssueFlow (val issueAmount: Long, private val linearId: UniqueIdentifier): FlowLogic<SignedTransaction>()
+class CashApprovedFlow (private val counterParty: String, private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
 
@@ -37,19 +38,22 @@ class CashSelfIssueFlow (val issueAmount: Long, private val linearId: UniqueIden
     }
 
     @Suspendable
-    override fun call(): SignedTransaction {
+    override fun call(): SignedTransaction
+    {
         progressTracker.currentStep = CREATING
-        val selfIssuance = selfIssue()
+        val approval = approved()
 
         progressTracker.currentStep = VERIFYING
         progressTracker.currentStep = SIGNING
-        val signedTransaction = verifyAndSign(transaction = selfIssuance)
-        val sessions = emptyList<FlowSession>() // empty because the owner's signature is just needed
-        val transactionSignedByParties = collectSignature(transaction = signedTransaction, sessions = sessions)
+        val signedTransaction = verifyAndSign(transaction = approval)
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+        val sessions = initiateFlow(counterRef)
+        val transactionSignedByParties = collectSignature(transaction = signedTransaction, sessions = listOf(sessions))
 
         progressTracker.currentStep = NOTARIZING
         progressTracker.currentStep = FINALISING
-        return recordRegistration(transaction = transactionSignedByParties, sessions = sessions)
+        return recordRegistration(transaction = transactionSignedByParties, sessions = listOf(sessions))
     }
 
     private fun inputStateRef(): StateAndRef<CashState> {
@@ -60,30 +64,56 @@ class CashSelfIssueFlow (val issueAmount: Long, private val linearId: UniqueIden
     private fun outState(): CashState
     {
         val input = inputStateRef().state.data
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
 
-        if (issueAmount.toInt() == 0)
-            throw FlowException("Amount should not be 0.")
-
-        return CashState(
-            amount = input.amount,
-            request = input.request,
-            status = input.status,
-            borrower = ourIdentity,
-            lender = ourIdentity,
-            wallet = input.wallet.plus(issueAmount),
-            linearId = linearId
-        )
+        if(input.wallet.toInt() == 0)
+        {
+            return CashState(
+                    amount = 0,
+                    request = false,
+                    status = input.status,
+                    borrower = input.borrower,
+                    lender = counterRef,
+                    wallet = input.wallet,
+                    linearId = linearId,
+                    participants = listOf(counterRef, counterRef)
+            )
+        }
+        else
+        {
+            return CashState(
+                    amount = input.amount,
+                    request = true,
+                    status = input.status,
+                    borrower = input.borrower,
+                    lender = input.lender,
+                    wallet = input.wallet,
+                    linearId = linearId
+            )
+        }
     }
 
-    private fun selfIssue(): TransactionBuilder
+    private fun approved(): TransactionBuilder
     {
-        val notary = serviceHub.networkMapCache.notaryIdentities.first()
-        val selfIssueCommand =
-                Command(CashContract.Commands.SelfIssue(), ourIdentity.owningKey)
+        val notary = inputStateRef().state.notary
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+
+        val issueCommand =
+                if(outState().request == false)
+                {
+                    Command(CashContract.Commands.Approved(), counterRef.owningKey)
+                }
+                else
+                {
+                    Command(CashContract.Commands.Approved(), listOf(ourIdentity.owningKey, counterRef.owningKey))
+                }
+
         return TransactionBuilder(notary = notary)
                 .addInputState(inputStateRef())
                 .addOutputState(outState(), CashContract.CASH_ID)
-                .addCommand(selfIssueCommand)
+                .addCommand(issueCommand)
     }
 
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
@@ -104,8 +134,8 @@ class CashSelfIssueFlow (val issueAmount: Long, private val linearId: UniqueIden
     ): SignedTransaction = subFlow(FinalityFlow(transaction, sessions))
 }
 
-@InitiatedBy(CashSelfIssueFlow::class)
-class CashSelfIssueFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>()
+@InitiatedBy(CashApprovedFlow::class)
+class CashApprovedFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>()
 {
     @Suspendable
     override fun call(): SignedTransaction
@@ -114,7 +144,7 @@ class CashSelfIssueFlowResponder(val flowSession: FlowSession) : FlowLogic<Signe
         {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
                 val output = stx.tx.outputs.single().data
-                "This must be an issue cash flow" using (output is CashState)
+                "This must be an issue transaction" using (output is CashState)
             }
         }
         val signedTransaction = subFlow(signTransactionFlow)

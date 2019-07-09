@@ -4,13 +4,11 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.CashContract
 import com.template.states.CashState
 import net.corda.core.contracts.*
-import net.corda.core.contracts.StateAndContract
 import net.corda.core.contracts.Command
 import net.corda.core.flows.*
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.ReceiveFinalityFlow
-import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
@@ -19,7 +17,9 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class CashIssueFlow (private val amount: Long, private val counterParty: Party, private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
+class CashIssueFlow (private val amount: Long,
+                     private val counterParty: String,
+                     private val linearId: UniqueIdentifier) : FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
 
@@ -46,7 +46,9 @@ class CashIssueFlow (private val amount: Long, private val counterParty: Party, 
         progressTracker.currentStep = VERIFYING
         progressTracker.currentStep = SIGNING
         val signedTransaction = verifyAndSign(transaction = issuance)
-        val sessions = initiateFlow(counterParty)
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+        val sessions = initiateFlow(counterRef)
         val transactionSignedByParties = collectSignature(transaction = signedTransaction, sessions = listOf(sessions))
 
         progressTracker.currentStep = NOTARIZING
@@ -62,26 +64,31 @@ class CashIssueFlow (private val amount: Long, private val counterParty: Party, 
     private fun outState(): CashState
     {
         val input = inputStateRef().state.data
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
 
         return CashState(
             amount = amount,
             request = input.request,
             status = input.status,
             borrower = ourIdentity,
-            lender = counterParty,
+            lender = counterRef,
             wallet = input.wallet,
-            participants = listOf(ourIdentity, counterParty),
+            participants = listOf(ourIdentity, counterRef),
             linearId = linearId
         )
     }
 
     private fun issue(): TransactionBuilder
     {
-        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+        val notary = inputStateRef().state.notary
         val issueCommand =
                 Command(CashContract.Commands.Issue(), outState().participants.map { it.owningKey })
 
-        return TransactionBuilder(notary = notary).withItems(StateAndContract(state = outState(), contract = CashContract.CASH_ID), issueCommand)
+        return TransactionBuilder(notary = notary)
+                .addInputState(inputStateRef())
+                .addOutputState(outState(), CashContract.CASH_ID)
+                .addCommand(issueCommand)
     }
 
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {

@@ -23,5 +23,6 @@ class CashContract : Contract
         class Issue : TypeOnlyCommandData(), Commands
         class SelfIssue : TypeOnlyCommandData(), Commands
         class Transfer : TypeOnlyCommandData(), Commands
+        class Approved : TypeOnlyCommandData(), Commands
     }
 }
