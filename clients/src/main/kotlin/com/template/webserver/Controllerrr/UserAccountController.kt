@@ -18,6 +18,22 @@ import com.template.states.formSet
 import net.corda.core.contracts.StateAndRef
 import javax.servlet.http.HttpServletRequest
 import com.template.webserver.utilities.FlowHandlerCompletion
+import net.corda.core.crypto.SecureHash
+import net.corda.core.node.services.AttachmentId
+import org.springframework.core.io.InputStreamResource
+import org.springframework.http.HttpHeaders
+import org.springframework.web.multipart.MultipartFile
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.InputStream
+//import java.io.InputStream
+import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.util.*
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import javax.annotation.Resource
 
 private const val CONTROLLER_NAME = "config.controller.name"
 
@@ -66,7 +82,7 @@ class UserAccountController(
      * REGISTER - RegisterUserFlow
 
      */
-    @PostMapping(value = "/states/user/create", produces = arrayOf("application/json"))
+        @PostMapping(value = "/states/user/create", produces = arrayOf("application/json"))
     private fun createUser(@RequestBody createUserAccount: createUserModel) : ResponseEntity<Map<String,Any>> {
         val (status, result) = try {
             val user = createUserModel(
@@ -186,6 +202,60 @@ class UserAccountController(
         else{ "message" to "Failed to Update a State and Register on Counter party"}
         val res = "result" to result
         return ResponseEntity.status(status).body(mapOf(stat,mess,res))
+    }
+    /**
+
+     * ATTACHMENT - Upload
+
+     */
+    @PostMapping (value="/attachment")
+    fun upload(@RequestParam file: MultipartFile, @RequestParam uploader: String): ResponseEntity<String> {
+        val filename = file.originalFilename
+//        require(filename != null) { "File name must be set" }
+        val hash: SecureHash =
+//                if (!(file.contentType == "zip" || file.contentType == "jar")) {
+//            uploadZip(file.inputStream, uploader, filename!!)
+//        } else {
+            proxy.uploadAttachmentWithMetadata(
+                    jar = file.inputStream,
+                    uploader = uploader,
+                    filename = filename!!
+            )
+//        }
+        return ResponseEntity.created(URI.create("attachments/$hash")).body("Attachment uploaded with hash - $hash")
+    }
+
+//    private fun uploadZip(inputStream: InputStream, uploader: String, filename: String): AttachmentId {
+//        val zipName = "$filename-${UUID.randomUUID()}.zip"
+//        FileOutputStream(zipName).use { fileOutputStream ->
+//            ZipOutputStream(fileOutputStream).use { zipOutputStream ->
+//                val zipEntry = ZipEntry(filename)
+//                zipOutputStream.putNextEntry(zipEntry)
+//                inputStream.copyTo(zipOutputStream, 1024)
+//            }
+//        }
+//        return FileInputStream(zipName).use { fileInputStream ->
+//            val hash = proxy.uploadAttachmentWithMetadata(
+//                    jar = fileInputStream,
+//                    uploader = uploader,
+//                    filename = filename
+//            )
+//            Files.deleteIfExists(Paths.get(zipName))
+//            hash
+//        }
+//    }
+    /**
+
+     * ATTACHMENT - Download
+
+     */
+    @GetMapping("attachmentDownload/{hash}")
+    fun downloadByHash(@PathVariable hash: String): ResponseEntity<InputStreamResource>? {
+        val inputStream = InputStreamResource(proxy.openAttachment(SecureHash.parse(hash)))
+        return ResponseEntity.ok().header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"$hash.zip\""
+        ).body(inputStream)
     }
 
 }
