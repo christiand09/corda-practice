@@ -38,7 +38,7 @@ class TokenSelfIssueFlow (val amount: Long, val linearId: UniqueIdentifier): Flo
     private fun selfissue(): TokenState
     {
         val input = stateref().state.data
-        return TokenState(input.details,false,ourIdentity,ourIdentity, input.total(amount).walletbalance,linearId = linearId)
+        return TokenState(input.details,ourIdentity,ourIdentity,input.requeststatus, input.total(amount).walletbalance,input.amountborrowed,input.amountpaid,linearId = linearId)
     }
     private fun stateref(): StateAndRef<TokenState>
     {

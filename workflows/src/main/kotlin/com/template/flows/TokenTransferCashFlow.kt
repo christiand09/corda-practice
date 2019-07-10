@@ -2,9 +2,7 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.TokenContract
-import com.template.states.Details
 import com.template.states.TokenState
-import com.template.states.UserState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
@@ -19,7 +17,7 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class TokenRequestFlow (val amount:Long, val lender: Party, val linearId: UniqueIdentifier): FlowLogic<SignedTransaction>()
+class TokenTransferCashFlow (val linearId: UniqueIdentifier, val borrower: Party): FlowLogic<SignedTransaction>()
 {
     override val progressTracker: ProgressTracker = tracker()
     companion object
@@ -36,49 +34,50 @@ class TokenRequestFlow (val amount:Long, val lender: Party, val linearId: Unique
     }
     @Suspendable
     override fun call(): SignedTransaction {
+
         progressTracker.currentStep = CREATING
-        val request  = transaction()
+        val issuecash = transaction(inputstate())
         progressTracker.currentStep = VERIFYING
         progressTracker.currentStep = SIGNING
-        val signedTransaction = verifyandsign(request)
-        val session = initiateFlow(lender)
-        val transactionsignedbybothparties = collectsignatures(signedTransaction, listOf(session))
+        val signedTransaction = verifyandsign(issuecash)
+        val session = initiateFlow(borrower)
+        val transactionsignedbyboth = collectIssuesignature(signedTransaction, listOf(session))
         progressTracker.currentStep = FINALISING
-        return recordIssue(transactionsignedbybothparties, listOf(session))
+        return recordIssue(transactionsignedbyboth, listOf(session))
     }
-    private fun transaction(): TransactionBuilder
+    private fun stateref(): StateAndRef<TokenState>
+    {
+        val stateref = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
+        return serviceHub.vaultService.queryBy<TokenState>(stateref).states.single()
+    }
+    private fun inputstate(): TokenState
+    {
+        val input = stateref().state.data
+        return TokenState(input.details,input.lender,input.borrower,"approved",input.total(input.amountborrowed).walletbalance,input.amountborrowed,input.amountpaid,linearId = linearId)
+    }
+    private fun transaction(state: TokenState): TransactionBuilder
     {
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
-        val command = Command(TokenContract.Commands.Token(), listOf(ourIdentity.owningKey,lender.owningKey))
+        val command = Command(TokenContract.Commands.Token(),listOf(ourIdentity.owningKey,borrower.owningKey))
         val builder = TransactionBuilder(notary = notary)
-                .addOutputState(state = requeststate(),contract = TokenContract.TOKEN_ID )
                 .addCommand(command)
+                .addOutputState(state = state,contract = TokenContract.TOKEN_ID)
+                .addInputState(stateref())
         return builder
     }
-    private fun inputstateref(): StateAndRef<TokenState>
-    {
-        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-        return serviceHub.vaultService.queryBy<TokenState>(criteria).states.single()
-    }
-    private fun requeststate():TokenState
-    {
-        val input = inputstateref().state.data
-        val name: Details = input.details
-        return(TokenState(name,false,lender,ourIdentity,amount))
-    }
-    private fun verifyandsign(transaction:TransactionBuilder): SignedTransaction
+    private fun verifyandsign(transaction: TransactionBuilder): SignedTransaction
     {
         transaction.verify(serviceHub)
         return serviceHub.signInitialTransaction(transaction)
     }
     @Suspendable
-    private fun collectsignatures(transaction: SignedTransaction,session: List<FlowSession>):SignedTransaction
-            = subFlow(CollectSignaturesFlow(transaction,session))
+    private fun collectIssuesignature(transaction: SignedTransaction,session: List<FlowSession>): SignedTransaction
+    = subFlow(CollectSignaturesFlow(transaction,session))
     @Suspendable
-    private fun recordIssue(transaction: SignedTransaction,session: List<FlowSession>): SignedTransaction
-            = subFlow(FinalityFlow(transaction,session))
+    private fun recordIssue(transaction: SignedTransaction,session: List<FlowSession>):SignedTransaction
+     = subFlow(FinalityFlow(transaction,session))
 
-    @InitiatedBy(TokenRequestFlow::class)
+    @InitiatedBy(TokenTransferCashFlow::class)
     class IOUIssueFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
 
         @Suspendable
@@ -95,4 +94,5 @@ class TokenRequestFlow (val amount:Long, val lender: Party, val linearId: Unique
             return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
         }
     }
+
 }

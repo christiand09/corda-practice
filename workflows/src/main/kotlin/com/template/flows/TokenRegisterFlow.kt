@@ -31,7 +31,7 @@ class TokenRegisterFlow (val user: Details): FlowLogic<SignedTransaction>()
     }
     private fun tokenregister(): TokenState
     {
-        return TokenState(user,false,ourIdentity,ourIdentity,0)
+        return TokenState(user,ourIdentity,ourIdentity,"none",0,0,0)
     }
     private fun verifyandsign(transaction: TransactionBuilder):SignedTransaction
     {
