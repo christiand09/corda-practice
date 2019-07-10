@@ -26,9 +26,9 @@ import net.corda.core.node.services.vault.QueryCriteria
  */
 @InitiatingFlow
 @StartableByRPC
-class PayDebtFlow(  val amountToPay: Int,
-                    val receiver: String,
-                    val linearId: UniqueIdentifier = UniqueIdentifier()): FlowLogic<SignedTransaction>() {
+class GetMoneyFlow(   val receiver: String,
+                      val amount: Int,
+                      val linearId: UniqueIdentifier = UniqueIdentifier()): FlowLogic<SignedTransaction>() {
 
     @Suspendable
     override fun call(): SignedTransaction {
@@ -64,11 +64,11 @@ class PayDebtFlow(  val amountToPay: Int,
         return MyState(
                 formSet =  input.formSet,
                 sender = ourIdentity,
-                receiver = counterRef,
-                wallet = input.wallet - amountToPay,
-                amountdebt = input.amountdebt - amountToPay,
-                amountpaid = input.amountpaid + amountToPay,
-                status = "${input.formSet.firstName} is paying $amountToPay to $counterRef",
+                receiver =counterRef,
+                wallet = input.wallet + amount,
+                amountdebt = input.amountdebt + amount,
+                amountpaid = input.amountpaid,
+                status = "Borrowing $amount from $counterRef",
                 approvals = true,
                 linearId = linearId
 
@@ -97,8 +97,8 @@ class PayDebtFlow(  val amountToPay: Int,
  * This is the flow which signs IOU issuances.
  * The signing is handled by the [SignTransactionFlow].
  */
-@InitiatedBy(PayDebtFlow::class)
-class PayDebtFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+@InitiatedBy(GetMoneyFlow::class)
+class GetMoneyFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
 
     @Suspendable
     override fun call(): SignedTransaction {

@@ -37,7 +37,11 @@ class RegisterUserFlow(private val formSet: formSet
                 formSet,
                 ourIdentity,
                 ourIdentity,
-                cash = 0
+                wallet = 0,
+                amountdebt = 0,
+                amountpaid = 0,
+                status = "${formSet.firstName} is now registered but not yet Approved",
+                approvals = false
         )
     }
 

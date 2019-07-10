@@ -15,20 +15,24 @@ import com.template.states.AttachmentState
 data class MyState (var formSet : formSet,
                     var sender: Party,
                     val receiver: Party,
-                    val cash: Int,
+                    val wallet: Int,
+                    val amountdebt: Int,
+                    val amountpaid: Int,
                     val status: String = "Registered but not yet Approved",
                     val approvals: Boolean =false,
                     override val participants: List<Party> = listOf(sender, receiver),
-                    override  val linearId: UniqueIdentifier = UniqueIdentifier()
-                    ) : LinearState
+                    override  val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState {
+
+}
+
 
 @CordaSerializable
 data class formSet (
-                    var firstName: String,
-                    var lastName: String,
-                    var age: String,
-                    var gender: String,
-                    var address: String)
+        var firstName: String,
+        var lastName: String,
+        var age: String,
+        var gender: String,
+        var address: String)
 
 //@CordaSerializable
 //data class Wallet (

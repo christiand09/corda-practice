@@ -26,7 +26,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 @InitiatingFlow
 @StartableByRPC
 class BorrowCashFlow( val receiver: String,
-                    val cash: Int,
+                    val amount: Int,
                     val linearId: UniqueIdentifier = UniqueIdentifier()): FlowLogic<SignedTransaction>() {
 
     @Suspendable
@@ -44,7 +44,7 @@ class BorrowCashFlow( val receiver: String,
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
         val cmd = Command(MyContract.Commands.Verify(), outputState().participants.map { it.owningKey })
         val builder = TransactionBuilder(notary = notary)
-//                .addInputState(inputStateRef())
+                .addInputState(inputStateRef())
                 .addOutputState(outputState(), MyContract.IOU_CONTRACT_ID)
                 .addCommand(cmd)
         return builder
@@ -64,9 +64,11 @@ class BorrowCashFlow( val receiver: String,
                 input.formSet,
                 ourIdentity,
                 counterRef,
-                input.cash,
-                status = "Borrowing from $counterRef",
-                approvals = true
+                input.wallet,
+                input.amountpaid,
+                input.amountdebt,
+                "Borrowing $amount from $counterRef",
+                linearId = linearId
 
         )
     }
@@ -93,7 +95,7 @@ class BorrowCashFlow( val receiver: String,
  * This is the flow which signs IOU issuances.
  * The signing is handled by the [SignTransactionFlow].
  */
-@InitiatedBy(IOUIssueFlow::class)
+@InitiatedBy(BorrowCashFlow::class)
 class BorrowCashFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
 
     @Suspendable

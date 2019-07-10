@@ -17,7 +17,7 @@ class AttachmentContract : Contract {
     }
 
     override fun verify(tx: LedgerTransaction) {
-        val state = tx.outputsOfType<AttachmentState>().single()
+//        val state = tx.outputsOfType<AttachmentState>().single()
         // we check that at least one has the matching hash, the other will be the contract
         //require(tx.attachments.any { it.id == state.hash }) {"At least one attachment in transaction must match hash ${state.hash}"}
     }
