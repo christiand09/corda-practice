@@ -29,7 +29,7 @@ class DriverBasedTest {
         assertEquals(bankA.name, partyBHandle.resolveName(bankA.name))
     }
 
-    // Runs a test inside the Driver DSL, which provides useful functions for starting nodes, etc.
+    // Runs a test inside the Driver DSL, which provides useful cashfunctions for starting nodes, etc.
     private fun withDriver(test: DriverDSL.() -> Unit) = driver(
         DriverParameters(isDebug = true, startNodesInProcess = true)
     ) { test() }
