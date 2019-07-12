@@ -41,8 +41,6 @@ data class AttachmentModel @JsonCreator constructor(
 data class AttachmentFlowModel @JsonCreator constructor(
     val counterParty: String,
     val hash: String,
-    val hash2: String,
-    val hash3: String
 )
 
 data class AttachmentUploadModel @JsonCreator constructor(
