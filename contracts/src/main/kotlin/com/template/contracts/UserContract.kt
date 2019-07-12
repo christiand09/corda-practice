@@ -1,7 +1,7 @@
 package com.template.contracts
 
 
-import com.template.states.UserState
+
 import net.corda.core.contracts.*
 import net.corda.core.transactions.LedgerTransaction
 
