@@ -1,12 +1,9 @@
-package com.template.flows
+package com.template.flows.UserFlow
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.AttachmentContract
 import com.template.states.AttachmentState
-import com.template.states.UserState
 import net.corda.core.contracts.Command
-import net.corda.core.contracts.Requirements.using
-import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.requireThat
 import net.corda.core.crypto.SecureHash
 import net.corda.core.flows.*

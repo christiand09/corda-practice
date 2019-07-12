@@ -1,12 +1,10 @@
 package com.template.webserver
 
-import com.sun.xml.internal.ws.api.message.Attachment
-import com.template.flows.*
+import com.template.flows.UserFlow.*
 import com.template.models.*
 import com.template.states.AttachmentState
 import com.template.states.UserState
 import com.template.webserver.utilities.FlowHandlerCompletion
-import io.netty.handler.codec.http.HttpResponse
 import net.corda.core.crypto.SecureHash
 import net.corda.core.messaging.vaultQueryBy
 import net.corda.core.node.services.AttachmentId
@@ -27,7 +25,6 @@ import java.nio.file.*
 import java.util.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import javax.annotation.Resource
 
 
 /**
@@ -36,10 +33,6 @@ import javax.annotation.Resource
 @RestController
 @RequestMapping("/register") // The paths for HTTP requests are relative to this base path.
 class Controller(private val rpc: NodeRPCConnection, val flowhandler:FlowHandlerCompletion) {
-
-    companion object {
-        private val logger = LoggerFactory.getLogger(RestController::class.java)
-    }
 
     private val proxy = rpc.proxy
 
