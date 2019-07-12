@@ -12,17 +12,12 @@ import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
-import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
 class CashSelfIssueFlow (private val selfIssueAmount: Long,
-                         private val linearId: UniqueIdentifier): FlowFunctions()
+                         private val linearId: UniqueIdentifier): CashFunctions()
 {
-    override val progressTracker = ProgressTracker(
-            CREATING, VERIFYING, SIGNING, NOTARIZING, FINALIZING
-    )
-
     @Suspendable
     override fun call(): SignedTransaction
     {

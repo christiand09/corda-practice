@@ -7,35 +7,16 @@ import com.template.states.AttachmentState
 import com.template.states.RegisterState
 import com.template.webserver.utilities.FlowHandlerCompletion
 import net.corda.core.crypto.SecureHash
-import net.corda.core.internal.Emoji
-import net.corda.core.internal.InputStreamAndHash
-import net.corda.core.messaging.CordaRPCOps
-import net.corda.core.messaging.startTrackedFlow
 import net.corda.core.messaging.vaultQueryBy
-import net.corda.core.node.services.AttachmentId
-import net.corda.core.utilities.getOrThrow
 import org.slf4j.LoggerFactory
 import org.springframework.core.io.InputStreamResource
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpHeaders.CONTENT_DISPOSITION
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.InputStream
-import java.net.HttpURLConnection
 import java.net.URI
-import java.net.URL
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.util.*
-import java.util.jar.JarInputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
-import javax.servlet.http.HttpServletResponse.SC_OK
 
 /**
  * Define your API endpoints here.
@@ -284,13 +265,16 @@ class Controller(rpc: NodeRPCConnection, private val flowHandlerCompletion :Flow
         val (status, result) = try {
             val attachment = AttachmentFlowModel(
                     counterParty = modelAttachment.counterParty,
-                    hash = modelAttachment.hash
+                    hash = modelAttachment.hash,
+                    hash2 = modelAttachment.hash2,
+                    hash3 = modelAttachment.hash3
             )
             val flowReturn = proxy.startFlowDynamic(
                     AttachmentFlow::class.java,
-
                     attachment.counterParty,
-                    attachment.hash
+                    attachment.hash,
+                    attachment.hash2,
+                    attachment.hash3
             )
             flowHandlerCompletion.flowHandlerCompletion(flowReturn)
             HttpStatus.CREATED to modelAttachment

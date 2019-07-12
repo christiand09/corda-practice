@@ -2,6 +2,7 @@ package com.template.flows.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.AttachmentContract
+import com.template.flows.cashfunctions.*
 import com.template.states.AttachmentState
 import net.corda.core.contracts.*
 import net.corda.core.contracts.Command
@@ -17,101 +18,61 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class AttachmentFlow (private val counterParty: String, private val attachId: String) : FlowLogic<SignedTransaction>()
+class AttachmentFlow (private val counterParty: String,
+                      private val attachId: String,
+                      private val attachId2: String,
+                      private val attachId3: String) : CashFunctions()
 {
-    override val progressTracker: ProgressTracker = tracker()
-
-    companion object
-    {
-        object CREATING : ProgressTracker.Step("Creating update!")
-        object SIGNING : ProgressTracker.Step("Signing update!")
-        object VERIFYING : ProgressTracker.Step("Verifying update!")
-        object NOTARIZING : ProgressTracker.Step("Notarize update")
-        object FINALISING : ProgressTracker.Step("Finalize update!") {
-            override fun childProgressTracker() = FinalityFlow.tracker()
-        }
-
-        fun tracker() = ProgressTracker(CREATING, SIGNING, VERIFYING, NOTARIZING, FINALISING)
-    }
+    override val progressTracker = ProgressTracker(
+            CREATING, VERIFYING, SIGNING, NOTARIZING, FINALIZING
+    )
 
     @Suspendable
     override fun call(): SignedTransaction
     {
+        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
+                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+
         progressTracker.currentStep = CREATING
         val updating = update()
 
         progressTracker.currentStep = VERIFYING
         progressTracker.currentStep = SIGNING
         val signedTransaction = verifyAndSign(transaction = updating)
-        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
-                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
-        val sessions = initiateFlow(counterRef)
-        val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = listOf(sessions))
+        val sessions = emptyList<FlowSession>()
+        val transactionSignedByAllParties = collectSignature(transaction = signedTransaction, sessions = sessions)
 
         progressTracker.currentStep = NOTARIZING
-        progressTracker.currentStep = FINALISING
-        return verifyRegistration(transaction = transactionSignedByAllParties, sessions = listOf(sessions))
+        progressTracker.currentStep = FINALIZING
+        return recordTransactionWithOtherParty(transaction = transactionSignedByAllParties, sessions = sessions)
     }
 
     private fun outState(): AttachmentState
     {
         val hash = SecureHash.sha256(attachId)
+        val hash2 = SecureHash.sha256(attachId2)
+        val hash3 = SecureHash.sha256(attachId3)
+
         val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
                 ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
 
         return AttachmentState(
                 hash,
+//                hash2,
+//                hash3,
                 ourIdentity,
                 counterRef
         )
     }
 
-    private fun update(): TransactionBuilder
-    {
-        val hash = SecureHash.sha256(attachId)
-        val contract = AttachmentContract.ATTACHMENT_PROGRAM_ID
-        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+    private fun update(): TransactionBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first()).apply {
         val attachmentCommand =
                 Command(AttachmentContract.Attach,
                         outState().participants.map { it.owningKey })
-
-        return TransactionBuilder(notary = notary).withItems(StateAndContract(outState(), contract), hash, attachmentCommand)
-    }
-
-    private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction
-    {
-        transaction.verify(serviceHub)
-        return serviceHub.signInitialTransaction(transaction)
-    }
-
-    @Suspendable
-    private fun collectSignature(
-            transaction: SignedTransaction,
-            sessions: List<FlowSession>
-    ): SignedTransaction = subFlow(CollectSignaturesFlow(transaction, sessions))
-
-    @Suspendable
-    private fun verifyRegistration(
-            transaction: SignedTransaction,
-            sessions: List<FlowSession>
-    ): SignedTransaction = subFlow(FinalityFlow(transaction, sessions))
-}
-
-@InitiatedBy(AttachmentFlow::class)
-class AttachmentFlowResponder (val flowSession: FlowSession) : FlowLogic<SignedTransaction>()
-{
-    @Suspendable
-    override fun call(): SignedTransaction
-    {
-        val signedTransactionFlow = object : SignTransactionFlow(flowSession)
-        {
-            override fun checkTransaction(stx: SignedTransaction) = requireThat {
-                val output = stx.tx.outputs.single().data
-                "This must be an attachment transaction." using (output is AttachmentState)
-            }
-        }
-        val signedTransaction = subFlow(signedTransactionFlow)
-
-        return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = signedTransaction.id))
+        addOutputState(outState(), AttachmentContract.ATTACHMENT_PROGRAM_ID)
+        addAttachment(outState().hash)
+//        addAttachment(outState().hash2)
+//        addAttachment(outState().hash3)
+        addCommand(attachmentCommand)
     }
 }

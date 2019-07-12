@@ -17,9 +17,9 @@ import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
-class CashTransferFlow (private val amountTransfer: Long,
+class CashTransferCash (private val amountTransfer: Long,
                         private val counterParty: String,
-                        private val linearId: UniqueIdentifier) : FlowFunctions()
+                        private val linearId: UniqueIdentifier) : CashFunctions()
 {
     override val progressTracker = ProgressTracker(
             CREATING, VERIFYING, SIGNING, NOTARIZING, FINALIZING
@@ -73,7 +73,7 @@ class CashTransferFlow (private val amountTransfer: Long,
             }
 }
 
-@InitiatedBy(CashTransferFlow::class)
+@InitiatedBy(CashTransferCash::class)
 class CashTransferFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>()
 {
     @Suspendable

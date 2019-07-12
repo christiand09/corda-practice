@@ -9,6 +9,8 @@ import net.corda.core.identity.Party
 
 @BelongsToContract(AttachmentContract::class)
 data class AttachmentState(val hash: SecureHash.SHA256,
+//                           val hash2: SecureHash.SHA256,
+//                           val hash3: SecureHash.SHA256,
                            val party: Party,
                            val counterParty: Party,
                            override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState

@@ -18,9 +18,9 @@ import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
-class CashSettleFlow (private val amountSettle: Long,
+class CashSettleCash (private val amountSettle: Long,
                       private val counterParty: String,
-                      private val linearId: UniqueIdentifier) : FlowFunctions()
+                      private val linearId: UniqueIdentifier) : CashFunctions()
 {
     override val progressTracker = ProgressTracker(
             CREATING, VERIFYING, SIGNING, NOTARIZING, FINALIZING
@@ -42,7 +42,6 @@ class CashSettleFlow (private val amountSettle: Long,
         val stateWithAdmin = outState().copy(participants = outState().participants + admin)
         if (stateWithAdmin.status)
         {
-            sessions.send(false)
             adminSession.send(true)
             val transactionSignedByParties = collectSignature(signedTransaction, listOf(adminSession))
             progressTracker.currentStep = NOTARIZING
@@ -63,10 +62,7 @@ class CashSettleFlow (private val amountSettle: Long,
     private fun outState(): WalletState
     {
         val input = inputStateRef(linearId).state.data
-        val admin = stringToParty("PartyC")
 
-//        val sessions = initiateFlow(stringToParty(counterParty))
-//        val adminSession = initiateFlow(admin)
         if (amountSettle > input.amountIssued)
             throw FlowException("Amount to be settle must be less than or equal to amount issued.")
 
@@ -102,19 +98,30 @@ class CashSettleFlow (private val amountSettle: Long,
 
     private fun settle(PartyC: Party): TransactionBuilder =
             TransactionBuilder(notary = inputStateRef(linearId).state.notary).apply {
-                val stateWithAdmin = outState().copy(participants = outState().participants + PartyC)
-                val settleCommand =
-                        if (!stateWithAdmin.status)
-                            Command(WalletContract.Commands.Transfer(), listOf(ourIdentity.owningKey, stringToParty(counterParty).owningKey))
+                        if (!outState().status)
+                        {
+                            val settleCommand =
+                                    Command(WalletContract.Commands.Transfer(),
+                                    listOf(ourIdentity.owningKey, stringToParty(counterParty).owningKey))
+                            addInputState(inputStateRef(linearId))
+                            addOutputState(outState(), WalletContract.WALLET_ID)
+                            addCommand(settleCommand)
+                        }
+
                         else
-                            Command(WalletContract.Commands.Settle(), PartyC.owningKey)
-                addInputState(inputStateRef(linearId))
-                addOutputState(stateWithAdmin, WalletContract.WALLET_ID)
-                addCommand(settleCommand)
+                        {
+                            val stateWithAdmin = outState().copy(participants = outState().participants + PartyC)
+                            val settleCommand =
+                                    Command(WalletContract.Commands.Settle(),
+                                            PartyC.owningKey)
+                            addInputState(inputStateRef(linearId))
+                            addOutputState(stateWithAdmin, WalletContract.WALLET_ID)
+                            addCommand(settleCommand)
+                        }
             }
 }
 
-@InitiatedBy(CashSettleFlow::class)
+@InitiatedBy(CashSettleCash::class)
 class CashSettleFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>()
 {
     @Suspendable
