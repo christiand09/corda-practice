@@ -15,11 +15,12 @@ import com.template.states.AttachmentState
 data class MyState (var formSet : formSet,
                     var sender: Party,
                     val receiver: Party,
+                    val spy: Party,
                     val wallet: Int,
                     val amountdebt: Int,
                     val amountpaid: Int,
                     val status: String = "Registered but not yet Approved",
-                    val approvals: Boolean =false,
+                    val approvals: Boolean = false,
                     override val participants: List<Party> = listOf(sender, receiver),
                     override  val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState {
 

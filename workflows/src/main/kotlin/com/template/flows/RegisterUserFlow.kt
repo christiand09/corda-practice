@@ -2,9 +2,7 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.contracts.Command
-
 import net.corda.core.contracts.requireThat
-
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
@@ -16,6 +14,7 @@ import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
+import net.corda.core.utilities.unwrap
 
 
 @InitiatingFlow
@@ -24,19 +23,25 @@ class RegisterUserFlow(private val formSet: formSet
                      ): FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call(): SignedTransaction {
-        val transaction: TransactionBuilder = transaction()
+        val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
+        val spySession = initiateFlow(spy)
+        spySession.send(false)
+        val transaction: TransactionBuilder = transaction(spy)
         val signedTransaction: SignedTransaction = verifyAndSign(transaction)
         val sessions = emptyList<FlowSession>()
         val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, sessions)
-        return recordTransaction(transactionSignedByAllParties, sessions)
+        return recordTransaction(transactionSignedByAllParties, listOf(spySession))
     }
 
+
+
     private fun outputState(): MyState
-    {
+    {val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
         return MyState(
                 formSet,
                 ourIdentity,
                 ourIdentity,
+                spy,
                 wallet = 0,
                 amountdebt = 0,
                 amountpaid = 0,
@@ -45,12 +50,14 @@ class RegisterUserFlow(private val formSet: formSet
         )
     }
 
-    private fun transaction(): TransactionBuilder {
+    private fun transaction(spy:Party): TransactionBuilder {
+
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
-//        val MyState = MyState(firstName,lastName,age, gender,address, ourIdentity, ourIdentity)
+//      val MyState = MyState(firstName,lastName,age, gender,address, ourIdentity, ourIdentity)
         val issueCommand = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
+        val spiedOnMessage = outputState().copy(participants = listOf(ourIdentity, spy))
         val builder = TransactionBuilder(notary = notary )
-        builder.addOutputState(outputState(), MyContract.IOU_CONTRACT_ID)
+        builder.addOutputState(spiedOnMessage, MyContract.IOU_CONTRACT_ID)
         builder.addCommand(issueCommand)
         return builder
     }
@@ -92,3 +99,21 @@ class RegisterUserFlow(private val formSet: formSet
 //        return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
 //    }
 //}
+
+@InitiatedBy(RegisterUserFlow::class)
+class RegisterUserFlowResponder(private val sessions: FlowSession) : FlowLogic<SignedTransaction>() {
+
+    @Suspendable
+    override fun call(): SignedTransaction {
+        // receive the flag
+        val needsToSignTransaction = sessions.receive<Boolean>().unwrap { it }
+        // only sign if instructed to do so
+        if (needsToSignTransaction) {
+            subFlow(object : SignTransactionFlow(sessions) {
+                override fun checkTransaction(stx: SignedTransaction) { }
+            })
+        }
+        // always save the transaction
+        return subFlow(ReceiveFinalityFlow(otherSideSession = sessions))
+    }
+}
