@@ -1,39 +1,25 @@
 package com.template.webserver.Controllerrr
 
-import com.template.flows.RegisterUserFlow
-import com.template.flows.VerifyUserFlow
-import com.template.flows.UpdateUserFlow
-import com.template.flows.UpdateRegisterUserFlow
+import com.template.flows.DataFlows.RegisterUserFlow
+import com.template.flows.DataFlows.VerifyUserFlow
+import com.template.flows.DataFlows.UpdateUserFlow
+//import com.template.flows.otherflows.UpdateRegisterUserFlow
 import com.template.states.MyState
 import com.template.webserver.NodeRPCConnection
 import net.corda.core.messaging.vaultQueryBy
-import net.corda.core.utilities.getOrThrow
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 //import com.template.flow.Encryption.md5
 import com.template.models.*
-import com.template.states.formSet
-import net.corda.core.contracts.StateAndRef
-import javax.servlet.http.HttpServletRequest
 import com.template.webserver.utilities.FlowHandlerCompletion
 import net.corda.core.crypto.SecureHash
-import net.corda.core.node.services.AttachmentId
 import org.springframework.core.io.InputStreamResource
 import org.springframework.http.HttpHeaders
 import org.springframework.web.multipart.MultipartFile
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.InputStream
 //import java.io.InputStream
 import java.net.URI
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.util.*
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
-import javax.annotation.Resource
 
 private const val CONTROLLER_NAME = "config.controller.name"
 
@@ -177,32 +163,32 @@ class UserAccountController(
 
      */
 
-    @PostMapping(value = "/states/user/updateregister", produces = arrayOf("application/json"))
-    private fun updateRegisterUser(@RequestBody updateRegisterUserAccount: updateRegisterUserModel) : ResponseEntity<Map<String,Any>> {
-        val (status, result) = try {
-            val user = updateRegisterUserModel(
-                    formSet = updateRegisterUserAccount.formSet,
-                    receiver = updateRegisterUserAccount.receiver,
-                    linearId = updateRegisterUserAccount.linearId
-            )
-            val flowReturn  = proxy.startFlowDynamic(
-                    UpdateRegisterUserFlow::class.java,
-                    user.formSet,
-                    user.receiver,
-                    user.linearId
-            )
-            flowHandlerCompletion.flowHandlerCompletion(flowReturn)
-            HttpStatus.CREATED to updateRegisterUserAccount
-        }catch (e: Exception){
-            HttpStatus.BAD_REQUEST to "$e"
-        }
-        val stat = "status" to status
-        val mess = if (status==HttpStatus.CREATED){
-            "message" to "Successful in Updating a State and Registered it on Counter party"}
-        else{ "message" to "Failed to Update a State and Register on Counter party"}
-        val res = "result" to result
-        return ResponseEntity.status(status).body(mapOf(stat,mess,res))
-    }
+//    @PostMapping(value = "/states/user/updateregister", produces = arrayOf("application/json"))
+//    private fun updateRegisterUser(@RequestBody updateRegisterUserAccount: updateRegisterUserModel) : ResponseEntity<Map<String,Any>> {
+//        val (status, result) = try {
+//            val user = updateRegisterUserModel(
+//                    formSet = updateRegisterUserAccount.formSet,
+//                    receiver = updateRegisterUserAccount.receiver,
+//                    linearId = updateRegisterUserAccount.linearId
+//            )
+//            val flowReturn  = proxy.startFlowDynamic(
+//                    UpdateRegisterUserFlow::class.java,
+//                    user.formSet,
+//                    user.receiver,
+//                    user.linearId
+//            )
+//            flowHandlerCompletion.flowHandlerCompletion(flowReturn)
+//            HttpStatus.CREATED to updateRegisterUserAccount
+//        }catch (e: Exception){
+//            HttpStatus.BAD_REQUEST to "$e"
+//        }
+//        val stat = "status" to status
+//        val mess = if (status==HttpStatus.CREATED){
+//            "message" to "Successful in Updating a State and Registered it on Counter party"}
+//        else{ "message" to "Failed to Update a State and Register on Counter party"}
+//        val res = "result" to result
+//        return ResponseEntity.status(status).body(mapOf(stat,mess,res))
+//    }
     /**
 
      * ATTACHMENT - Upload

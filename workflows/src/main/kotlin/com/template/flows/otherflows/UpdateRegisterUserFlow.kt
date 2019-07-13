@@ -1,14 +1,13 @@
-//package com.template.flows
+package com.template.flows.otherflows
 //
 //import co.paralleluniverse.fibers.Suspendable
 //import com.template.contracts.MyContract
+//import com.template.flows.DataFlows.RegisterUserFlow
 //import com.template.states.MyState
 //import com.template.states.formSet
 //import net.corda.core.contracts.Command
-//import net.corda.core.contracts.Requirements.using
 //import net.corda.core.contracts.StateAndRef
 //import net.corda.core.contracts.UniqueIdentifier
-//import net.corda.core.contracts.requireThat
 //import net.corda.core.flows.*
 //import net.corda.core.identity.Party
 //import net.corda.core.node.services.queryBy
@@ -17,7 +16,7 @@
 //import net.corda.core.transactions.TransactionBuilder
 //import net.corda.core.utilities.unwrap
 //
-//
+////Update current User Info then send a copy to receiver Party as new state with new linearId
 //@InitiatingFlow
 //@StartableByRPC
 //class UpdateRegisterUserFlow(
@@ -27,7 +26,10 @@
 //
 //    @Suspendable
 //    override fun call(): SignedTransaction {
-//        val transaction: TransactionBuilder = transaction()
+//        val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
+//        val spySession = initiateFlow(spy)
+//        spySession.send(false)
+//        val transaction: TransactionBuilder = transaction(spy)
 //        val signedTransaction: SignedTransaction = verifyAndSign(transaction)
 ////        val sessions = (outputState().participants - ourIdentity).map { initiateFlow(it) }.toList()
 //        val counterRef = serviceHub.identityService.partiesFromName(receiver, false).singleOrNull()
@@ -35,7 +37,7 @@
 //        val sessions = initiateFlow(counterRef)
 //        sessions.send(formSet)
 //        val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, listOf(sessions))
-//        return recordTransaction(transactionSignedByAllParties, listOf(sessions))
+//        return recordTransaction(transactionSignedByAllParties, listOf(sessions, spySession))
 //    }
 //
 //    private fun inputStateRef(): StateAndRef<MyState> {
@@ -44,6 +46,7 @@
 //    }
 //
 //    private fun outputState(): MyState {
+//        val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
 //        val input = inputStateRef().state.data
 //        //return MyState(firstName,lastName,age,gender,address,ourIdentity,input.receiver,input.approvals, input.participants, input.linearId)
 //        val counterRef = serviceHub.identityService.partiesFromName(receiver, false).singleOrNull()
@@ -68,30 +71,29 @@
 //                formSet,
 //                ourIdentity,
 //                counterRef,
-//                approvals = true,
-//                //input.participants,
+//                spy,
+//                input.wallet,
+//                input.amountdebt,
+//                input.amountpaid,
+//                "User updated and was registered on $counterRef",
+//                input.debtFree,
+//                input.approvals,
+//                listOf(ourIdentity,counterRef,spy),
 //                linearId = linearId
 //        )
 //    }
 //
-//    private fun transaction(): TransactionBuilder {
-////        val inputCriteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-////        val vault = serviceHub.vaultService.queryBy<MyState>(inputCriteria).states.first()
-////        var input = vault.state.data
+//    private fun transaction(spy:Party): TransactionBuilder {
 ////        val notary = serviceHub.networkMapCache.notaryIdentities.first()
-//        //val contract = MyContract.IOU_CONTRACT_ID
-//        val notary = inputStateRef().state.notary
-//        val cmd = Command(MyContract.Commands.Issue(), outputState().participants.map { it.owningKey })
-//        val builder = TransactionBuilder(notary)
-//                .addInputState(inputStateRef())
-//                .addOutputState(outputState(), MyContract.IOU_CONTRACT_ID)
-//                .addCommand(cmd)
+//        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+//        val cmd = Command(MyContract.Commands.Issue(), (outputState().participants-spy).map { it.owningKey })
+//        val builder = TransactionBuilder(notary = notary)
+//        builder.addInputState(inputStateRef())
+//        builder.addOutputState(outputState(), MyContract.IOU_CONTRACT_ID)
+//        builder.addCommand(cmd)
 //        return builder
 ////        val userState = MyState(firstName, lastName, age, gender, address, ourIdentity, input.receiver, input.approvals, input.participants, input.linearId)
 //    }
-//
-//
-//
 //
 //    private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
 //        transaction.verify(serviceHub)
@@ -111,19 +113,41 @@
 //
 //
 //@InitiatedBy(UpdateRegisterUserFlow::class)
-//class UpdateRegisterUserFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+//class UpdateRegisterUserFlowResponder(private val sessions: FlowSession) : FlowLogic<SignedTransaction>() {
+//
 //    @Suspendable
 //    override fun call(): SignedTransaction {
-//        val signedTransactionFlow = object : SignTransactionFlow(flowSession) {
-//            override fun checkTransaction(stx: SignedTransaction) = requireThat {
-//                val output = stx.tx.outputs.single().data
-//                "This must be an IOU transaction" using (output is MyState)
-//            }
+//        // receive the flag
+//        val payload = sessions.receive(formSet::class.java).unwrap {it}
+//        subFlow(RegisterUserFlow(payload))
+//        val needsToSignTransaction = sessions.receive<Boolean>().unwrap { it }
+//        // only sign if instructed to do so
+//        if (needsToSignTransaction) {
+//            subFlow(object : SignTransactionFlow(sessions) {
+//                override fun checkTransaction(stx: SignedTransaction) { }
+//            })
 //        }
 //
-//        val payload = flowSession.receive(formSet::class.java).unwrap {it}
-//        val txWeJustSignedId = subFlow(signedTransactionFlow)
-//        subFlow(RegisterUserFlow(payload))
-//        return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
+//        // always save the transaction
+//        return subFlow(ReceiveFinalityFlow(otherSideSession = sessions))
 //    }
 //}
+//
+//
+////@InitiatedBy(UpdateRegisterUserFlow::class)
+////class UpdateRegisterUserFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+////    @Suspendable
+////    override fun call(): SignedTransaction {
+////        val signedTransactionFlow = object : SignTransactionFlow(flowSession) {
+////            override fun checkTransaction(stx: SignedTransaction) = requireThat {
+////                val output = stx.tx.outputs.single().data
+////                "This must be an IOU transaction" using (output is MyState)
+////            }
+////        }
+////
+////        val payload = flowSession.receive(formSet::class.java).unwrap {it}
+////        val txWeJustSignedId = subFlow(signedTransactionFlow)
+////        subFlow(RegisterUserFlow(payload))
+////        return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
+////    }
+////}

@@ -20,6 +20,7 @@ data class MyState (var formSet : formSet,
                     val amountdebt: Int,
                     val amountpaid: Int,
                     val status: String = "Registered but not yet Approved",
+                    val debtFree : Boolean = true,
                     val approvals: Boolean = false,
                     override val participants: List<Party> = listOf(sender, receiver),
                     override  val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState {

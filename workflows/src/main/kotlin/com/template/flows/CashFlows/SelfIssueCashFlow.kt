@@ -1,13 +1,13 @@
-package com.template.flows
+package com.template.flows.CashFlows
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.contracts.Command
-import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import com.template.states.MyState
 import com.template.contracts.MyContract
+import com.template.flows.FlowFunction
 //import com.template.states.formSet
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
@@ -17,8 +17,8 @@ import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
-class SelfIssueCashFlow(private val amount: Int,  private val linearId: UniqueIdentifier = UniqueIdentifier()
-): FlowFunction() {
+class SelfIssueCashFlow(private val amount: Int,  private val linearId: UniqueIdentifier = UniqueIdentifier()): FlowFunction() {
+
     @Suspendable
     override fun call(): SignedTransaction {
         val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
@@ -30,10 +30,12 @@ class SelfIssueCashFlow(private val amount: Int,  private val linearId: UniqueId
         val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, sessions)
         return recordTransaction(transactionSignedByAllParties, listOf(spySession))
     }
+
     private fun inputStateRef(): StateAndRef<MyState> {
         val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
         return serviceHub.vaultService.queryBy<MyState>(criteria).states.single()
     }
+
     private fun outputState(): MyState {
         val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
         val input = inputStateRef().state.data
@@ -47,6 +49,7 @@ class SelfIssueCashFlow(private val amount: Int,  private val linearId: UniqueId
                 amountpaid = input.amountpaid,
                 linearId = linearId,
                 status = "Now issuing cash worth $amount on $ourIdentity",
+                debtFree = input.debtFree,
                 approvals = input.approvals
         )
     }
@@ -67,48 +70,10 @@ class SelfIssueCashFlow(private val amount: Int,  private val linearId: UniqueId
     private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
             subFlow(FinalityFlow(transaction, sessions))
 }
-
 /**
  * This is the flow which signs IOU issuances.
  * The signing is handled by the [SignTransactionFlow].
  */
-//@InitiatedBy(SelfIssueCashFlow::class)
-//class SelfIssueCashFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
-//
-//    @Suspendable
-//    override fun call(): SignedTransaction {
-//        val signedTransactionFlow = object : SignTransactionFlow(flowSession) {
-//            override fun checkTransaction(stx: SignedTransaction) = requireThat {
-//                val output = stx.tx.outputs.single().data
-//                "This must be an IOU transaction" using (output is MyState)
-//            }
-//        }
-//        val txWeJustSignedId = subFlow(signedTransactionFlow)
-//
-//        return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
-//    }
-//}
-
-//@InitiatingFlow
-//@StartableByRPC
-//class SelfIssueCashFlow(private val amount: Int):FlowLogic<SignedTransaction>() {
-//
-//    @Suspendable
-//    override fun call(): SignedTransaction {
-////        progressTracker.currentStep = GENERATING_TRANSACTION
-//        val notary = serviceHub.networkMapCache.notaryIdentities.first()
-//        val tokenState = MyState(amount, ourIdentity, listOf(ourIdentity))
-//        val sessions = emptyList<FlowSession>()
-//        val transactionBuilder = TransactionBuilder(notary)
-//                .addOutputState(tokenState, MyContract.IOU_CONTRACT_ID)
-//                .addCommand(MyContract.Commands.Issue(), listOf(ourIdentity.owningKey))
-//
-//        val signedTransaction = serviceHub.signInitialTransaction(transactionBuilder)
-//        transactionBuilder.verify(serviceHub)
-//        return subFlow(FinalityFlow(signedTransaction, sessions))
-//    }
-//}
-
 @InitiatedBy(SelfIssueCashFlow::class)
 class SelfIssueCashFlowResponder(private val sessions: FlowSession) : FlowLogic<SignedTransaction>() {
     @Suspendable
