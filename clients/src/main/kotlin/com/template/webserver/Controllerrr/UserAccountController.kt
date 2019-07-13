@@ -1,5 +1,6 @@
 package com.template.webserver.Controllerrr
 
+import com.template.flows.CashFlows.*
 import com.template.flows.DataFlows.RegisterUserFlow
 import com.template.flows.DataFlows.VerifyUserFlow
 import com.template.flows.DataFlows.UpdateUserFlow
@@ -14,7 +15,9 @@ import org.springframework.web.bind.annotation.*
 //import com.template.flow.Encryption.md5
 import com.template.models.*
 import com.template.webserver.utilities.FlowHandlerCompletion
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.crypto.SecureHash
+import net.corda.core.identity.Party
 import org.springframework.core.io.InputStreamResource
 import org.springframework.http.HttpHeaders
 import org.springframework.web.multipart.MultipartFile
@@ -48,6 +51,14 @@ class UserAccountController(
             val list = requestStates.map {
                 userAccountModel(
                         formSet = it.formSet,
+                        sender = it.sender.toString(),
+                        receiver = it.receiver.toString(),
+                        spy = it.spy.toString(),
+                        wallet = it.wallet,
+                        amountdebt = it.amountdebt,
+                        amountpaid = it.amountpaid,
+                        status = it.status,
+                        debtFree = it.debtFree,
                         approvals = it.approvals,
                         linearId = it.linearId
                 )
@@ -242,6 +253,162 @@ class UserAccountController(
                 HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"$hash.zip\""
         ).body(inputStream)
+    }
+
+    /**
+
+     * SEND MONEY - SendMoneyFlow
+
+     */
+    @PostMapping(value = "/states/user/sendcash", produces = arrayOf("application/json"))
+    private fun sendMoney(@RequestBody sendMoneyAccount: sendMoneyModel) : ResponseEntity<Map<String,Any>> {
+        val (status, result) = try {
+            val user = sendMoneyModel(
+                    receiver = sendMoneyAccount.receiver,
+                    amount = sendMoneyAccount.amount,
+                    linearId = sendMoneyAccount.linearId
+            )
+            val flowReturn  = proxy.startFlowDynamic(
+                    SendMoneyFlow::class.java,
+                    user.receiver,
+                    user.amount,
+                    user.linearId
+            )
+            flowHandlerCompletion.flowHandlerCompletion(flowReturn)
+            HttpStatus.CREATED to sendMoneyAccount
+        }catch (e: Exception){
+            HttpStatus.BAD_REQUEST to "$e"
+        }
+        val stat = "status" to status
+        val mess = if (status==HttpStatus.CREATED){
+            "message" to "Successful in verifying a user"}
+        else{ "message" to "Failed to verify a user"}
+        val res = "result" to result
+        return ResponseEntity.status(status).body(mapOf(stat,mess,res))
+    }
+
+    /**
+
+     * BORROW CASH - BorrowCashFlow
+
+     */
+    @PostMapping(value = "/states/user/borrowcash", produces = arrayOf("application/json"))
+    private fun borrowCash(@RequestBody borrowCashAccount: borrowCashModel) : ResponseEntity<Map<String,Any>> {
+        val (status, result) = try {
+            val user = borrowCashModel(
+                    receiver = borrowCashAccount.receiver,
+                    amount = borrowCashAccount.amount,
+                    linearId = borrowCashAccount.linearId
+            )
+            val flowReturn  = proxy.startFlowDynamic(
+                    BorrowCashFlow::class.java,
+                    user.receiver,
+                    user.amount,
+                    user.linearId
+            )
+            flowHandlerCompletion.flowHandlerCompletion(flowReturn)
+            HttpStatus.CREATED to borrowCashAccount
+        }catch (e: Exception){
+            HttpStatus.BAD_REQUEST to "$e"
+        }
+        val stat = "status" to status
+        val mess = if (status==HttpStatus.CREATED){
+            "message" to "Successful in verifying a user"}
+        else{ "message" to "Failed to verify a user"}
+        val res = "result" to result
+        return ResponseEntity.status(status).body(mapOf(stat,mess,res))
+    }
+
+    /**
+
+     * PAY DEBT - PayDebtFlow
+
+     */
+    @PostMapping(value = "/states/user/paydebt", produces = arrayOf("application/json"))
+    private fun payDebt(@RequestBody payDebtAccount: payDebtModel) : ResponseEntity<Map<String,Any>> {
+        val (status, result) = try {
+            val user = payDebtModel(
+                    amountToPay = payDebtAccount.amountToPay,
+                    receiver = payDebtAccount.receiver,
+                    linearId = payDebtAccount.linearId
+            )
+            val flowReturn  = proxy.startFlowDynamic(
+                    PayDebtFlow::class.java,
+                    user.amountToPay,
+                    user.receiver,
+                    user.linearId
+            )
+            flowHandlerCompletion.flowHandlerCompletion(flowReturn)
+            HttpStatus.CREATED to payDebtAccount
+        }catch (e: Exception){
+            HttpStatus.BAD_REQUEST to "$e"
+        }
+        val stat = "status" to status
+        val mess = if (status==HttpStatus.CREATED){
+            "message" to "Successful in verifying a user"}
+        else{ "message" to "Failed to verify a user"}
+        val res = "result" to result
+        return ResponseEntity.status(status).body(mapOf(stat,mess,res))
+    }
+
+    /**
+
+     * SELF ISSUE CASH - SelfIssueCashFlow
+
+     */
+    @PostMapping(value = "/states/user/selfissuecash", produces = arrayOf("application/json"))
+    private fun selfIssueCash(@RequestBody selfIssueCashAccount: selfIssueCashModel) : ResponseEntity<Map<String,Any>> {
+        val (status, result) = try {
+            val user = selfIssueCashModel(
+                    amount = selfIssueCashAccount.amount,
+                    linearId = selfIssueCashAccount.linearId
+            )
+            val flowReturn  = proxy.startFlowDynamic(
+                    SelfIssueCashFlow::class.java,
+                    user.amount,
+                    user.linearId
+            )
+            flowHandlerCompletion.flowHandlerCompletion(flowReturn)
+            HttpStatus.CREATED to selfIssueCashAccount
+        }catch (e: Exception){
+            HttpStatus.BAD_REQUEST to "$e"
+        }
+        val stat = "status" to status
+        val mess = if (status==HttpStatus.CREATED){
+            "message" to "Successful in verifying a user"}
+        else{ "message" to "Failed to verify a user"}
+        val res = "result" to result
+        return ResponseEntity.status(status).body(mapOf(stat,mess,res))
+    }
+
+    /**
+
+     * BURN OWN CASH - BurnOwnCashFlow
+
+     */
+    @PostMapping(value = "/states/user/burncash", produces = arrayOf("application/json"))
+    private fun burnOwnCash(@RequestBody burnOwnCashAccount: burnOwnCashModel) : ResponseEntity<Map<String,Any>> {
+        val (status, result) = try {
+            val user = burnOwnCashModel(
+                    amountToBurn = burnOwnCashAccount.amountToBurn,
+                    linearId = burnOwnCashAccount.linearId
+            )
+            val flowReturn  = proxy.startFlowDynamic(
+                    BurnOwnCashFlow::class.java,
+                    user.amountToBurn,
+                    user.linearId
+            )
+            flowHandlerCompletion.flowHandlerCompletion(flowReturn)
+            HttpStatus.CREATED to burnOwnCashAccount
+        }catch (e: Exception){
+            HttpStatus.BAD_REQUEST to "$e"
+        }
+        val stat = "status" to status
+        val mess = if (status==HttpStatus.CREATED){
+            "message" to "Successful in verifying a user"}
+        else{ "message" to "Failed to verify a user"}
+        val res = "result" to result
+        return ResponseEntity.status(status).body(mapOf(stat,mess,res))
     }
 
 }
