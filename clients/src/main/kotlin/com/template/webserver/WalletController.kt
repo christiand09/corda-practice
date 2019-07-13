@@ -40,7 +40,7 @@ class WalletController(rpc: NodeRPCConnection, private val flowHandlerCompletion
                         status = it.status,
                         borrower = it.borrower.toString(),
                         lender = it.lender.toString(),
-                        admin = it.lender.toString(),
+                        admin = it.admin.toString(),
                         linearId = it.linearId
                 )
             }
