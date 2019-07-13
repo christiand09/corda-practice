@@ -3,8 +3,7 @@ package com.template.models
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.template.states.UserState
 import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.crypto.SecureHash
-import org.springframework.web.multipart.MultipartFile
+
 
 
 data class UserModel(

@@ -17,14 +17,9 @@ import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
-class PartyIssueFlow(private val amountIssued: Long , private val counterParty: String,private val linearId: UniqueIdentifier) : FlowFunctions() {
-
-    override val progressTracker = ProgressTracker(
-            GENERATING_TRANSACTION,
-            VERIFYING_TRANSACTION,
-            SIGNING_TRANSACTION,
-            NOTARIZE_TRANSACTION,
-            FINALISING_TRANSACTION)
+class PartyIssueFlow(private val amountIssued: Long,
+                     private val counterParty: String,
+                     private val linearId: UniqueIdentifier) : FlowFunctions() {
 
     @Suspendable
     override fun call() : SignedTransaction {

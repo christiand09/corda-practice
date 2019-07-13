@@ -17,19 +17,12 @@ import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
-class PartyIssueTransferFlow( private val amountToLend: Long,
-                      private val counterParty: String,
-                      private val linearId: UniqueIdentifier) : FlowFunctions() {
-
-    override val progressTracker = ProgressTracker(
-            GENERATING_TRANSACTION,
-            VERIFYING_TRANSACTION,
-            SIGNING_TRANSACTION,
-            NOTARIZE_TRANSACTION,
-            FINALISING_TRANSACTION)
+class PartyIssueTransferFlow(private val amountToLend: Long,
+                             private val counterParty: String,
+                             private val linearId: UniqueIdentifier) : FlowFunctions() {
 
     @Suspendable
-    override fun call() : SignedTransaction {
+    override fun call(): SignedTransaction {
         progressTracker.currentStep = GENERATING_TRANSACTION
         val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
         val tx = verifyAndSign(transaction(spy))
@@ -40,8 +33,7 @@ class PartyIssueTransferFlow( private val amountToLend: Long,
         progressTracker.currentStep = SIGNING_TRANSACTION
 //        val signedTransaction = verifyAndSign(transaction = amountTransfer)
 
-        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
-                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+        val counterRef = stringToParty(counterParty)
         val sessions = initiateFlow(counterRef) // empty because the owner's signature is just needed
         val spySession = initiateFlow(spy)
 
@@ -52,26 +44,31 @@ class PartyIssueTransferFlow( private val amountToLend: Long,
 
 
         progressTracker.currentStep = FINALISING_TRANSACTION
-        return recordTransaction(transaction = transactionSignedByParties, sessions = listOf(sessions,spySession))
+        return recordTransaction(transaction = transactionSignedByParties, sessions = listOf(sessions, spySession))
     }
 
     private fun outputState(): TokenState {
-        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
-                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+        val counterRef = stringToParty(counterParty)
         val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
         val input = inputStateRef(linearId).state.data
 
 //        return TokenState(amount = amount,borrower = ourIdentity,lender = counterRef,walletbalance = input.walletbalance,linearId = linearId)
-            return TokenState(amountIssued = input.amountIssued,amountPaid = input.amountPaid,borrower = counterRef,lender = ourIdentity,iss= spy,walletBalance = input.walletBalance.plus(amountToLend),settled = input.settled,linearId = linearId)
-        }
+        return TokenState(amountIssued = input.amountIssued,
+                amountPaid = input.amountPaid,
+                borrower = counterRef,
+                lender = ourIdentity,
+                iss = spy,
+                walletBalance = input.walletBalance.plus(amountToLend),
+                settled = input.settled,
+                linearId = linearId)
+    }
 
-     /****
+    /****
      *SPY*
      ****/
     private fun transaction(spy: Party) =
-            TransactionBuilder(notary= inputStateRef(linearId).state.notary).apply {
-                val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
-                        ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+            TransactionBuilder(notary = inputStateRef(linearId).state.notary).apply {
+                val counterRef = stringToParty(counterParty)
                 val spycmd = Command(TokenContract.Commands.Send(), listOf(ourIdentity.owningKey, counterRef.owningKey))
                 // the spy is added to the messages participants
                 val spiedOnMessage = outputState().copy(participants = outputState().participants + spy)
@@ -86,7 +83,7 @@ class PartyIssueTransferFlow( private val amountToLend: Long,
 
 
 @InitiatedBy(PartyIssueTransferFlow::class)
-class PartyIssueTransferFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+class PartyIssueTransferFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>() {
 
     @Suspendable
     override fun call(): SignedTransaction {
@@ -96,7 +93,7 @@ class PartyIssueTransferFlowResponder(val flowSession: FlowSession): FlowLogic<S
         // only sign if instructed to do so
         if (needsToSignTransaction) {
             subFlow(object : SignTransactionFlow(flowSession) {
-                override fun checkTransaction(stx: SignedTransaction) { }
+                override fun checkTransaction(stx: SignedTransaction) {}
             })
         }
         // always save the transaction

@@ -191,7 +191,6 @@ class Controller(rpc: NodeRPCConnection, val flowHandlerCompletion : FlowHandler
         val res = "result" to result
         return ResponseEntity.status(status).body(mapOf(stat, mess, res))
     }
-
      /****************
      * AttachmentFlow*
      ****************/
@@ -225,16 +224,6 @@ class Controller(rpc: NodeRPCConnection, val flowHandlerCompletion : FlowHandler
          val res = "result" to result
          return ResponseEntity.status(status).body(mapOf(stat, mess, res))
      }
-
-
-
-
-
-
-
-
-
-
 
      /************
      * UPLOADING *
