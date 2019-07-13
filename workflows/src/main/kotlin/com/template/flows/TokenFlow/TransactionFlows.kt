@@ -52,8 +52,12 @@ abstract class TransactionFlows : FlowLogic<SignedTransaction>() {
                 ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
     }
 
-    fun inputStateAndRefTokenState(id: String): StateAndRef<TokenState> {
-        val queryCriteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(stringToUniqueIdentifier(id)))
+//    fun inputStateAndRefTokenState(id: String): StateAndRef<TokenState> {
+//        val queryCriteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(stringToUniqueIdentifier(id)))
+//        return serviceHub.vaultService.queryBy<TokenState>(queryCriteria).states.single()
+//    }
+    fun inputStateAndRefTokenState(id: UniqueIdentifier): StateAndRef<TokenState> {
+        val queryCriteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(id))
         return serviceHub.vaultService.queryBy<TokenState>(queryCriteria).states.single()
     }
     fun transactionwithoutinput(admin:Party,state:TokenState,command: Command<TokenContract.Commands.Token>,notary:Party)
@@ -63,7 +67,7 @@ abstract class TransactionFlows : FlowLogic<SignedTransaction>() {
                 addOutputState(spiedOnMessage, TokenContract.TOKEN_ID)
                 addCommand(command)
             }
-    fun transactionwithinput(admin:Party,state:TokenState,command: Command<TokenContract.Commands.Token>,linearId: String,notary: Party)
+    fun transactionwithinput(admin:Party,state:TokenState,command: Command<TokenContract.Commands.Token>,linearId: UniqueIdentifier,notary: Party)
             = TransactionBuilder(notary = notary)
             .apply {
                 val spiedOnMessage = state.copy(participants = state.participants + admin)
@@ -71,7 +75,7 @@ abstract class TransactionFlows : FlowLogic<SignedTransaction>() {
                 addOutputState(spiedOnMessage, TokenContract.TOKEN_ID)
                 addCommand(command)
             }
-    fun fullypaidtransaction(admin: Party,state: TokenState,command: Command<TokenContract.Commands.Token>,linearId: String,notary:Party) = TransactionBuilder(notary = notary)
+    fun fullypaidtransaction(admin: Party,state: TokenState,command: Command<TokenContract.Commands.Token>,linearId: UniqueIdentifier,notary:Party) = TransactionBuilder(notary = notary)
             .apply {
                 val settle = state.copy(participants = listOf(admin))
                 addInputState(inputStateAndRefTokenState(linearId))

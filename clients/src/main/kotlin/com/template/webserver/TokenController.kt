@@ -85,7 +85,7 @@ class TokenController (rpc: NodeRPCConnection,val flowhandler: FlowHandlerComple
         return ResponseEntity.status(status).body(mapOf(stat,mess,res))
     }
     @PutMapping("/issue",produces = ["application/json"])
-    private fun issuetoanother(anotherissue: tokenissuetoanother): ResponseEntity<Map<String,Any>>
+    private fun issuetoanother(@RequestBody anotherissue: tokenissuetoanother): ResponseEntity<Map<String,Any>>
     {
         val (status,result) = try {
             val tokentoanother = tokenissuetoanother(amount = anotherissue.amount,
@@ -112,7 +112,7 @@ class TokenController (rpc: NodeRPCConnection,val flowhandler: FlowHandlerComple
         return ResponseEntity.status(status).body(mapOf(stat,mess,res))
     }
     @PutMapping("/transfer",produces = ["application/json"])
-    private fun transfertoken(transfercash: tokentransfer): ResponseEntity<Map<String,Any>>
+    private fun transfertoken(@RequestBody transfercash: tokentransfer): ResponseEntity<Map<String,Any>>
     {
         val (status,result) = try {
 
@@ -137,7 +137,7 @@ class TokenController (rpc: NodeRPCConnection,val flowhandler: FlowHandlerComple
         return ResponseEntity.status(status).body(mapOf(stat,mess,res))
     }
     @PutMapping("/settle",produces = ["application/json"])
-    private fun tokensettle(settledebt: tokensettlebalance): ResponseEntity<Map<String,Any>>
+    private fun tokensettle(@RequestBody settledebt: tokensettlebalance): ResponseEntity<Map<String,Any>>
     {
         val (status, result) = try {
             val settletoken = tokensettlebalance(linearId = settledebt.linearId,

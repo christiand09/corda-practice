@@ -4,13 +4,14 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.TokenContract
 import com.template.states.TokenState
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 
 @InitiatingFlow
 @StartableByRPC
-class TokenTransferCashFlow (val linearId: String, val borrower: String): TransactionFlows()
+class TokenTransferCashFlow (val linearId: UniqueIdentifier, val borrower: String): TransactionFlows()
 {
     @Suspendable
     override fun call(): SignedTransaction {
@@ -28,7 +29,7 @@ class TokenTransferCashFlow (val linearId: String, val borrower: String): Transa
         val input = inputStateAndRefTokenState(linearId).state.data
         return TokenState(input.details,input.lender, input.borrower,"approved"
                 ,input.total(input.amountborrowed).walletbalance, input.amountborrowed,input.amountpaid,
-                linearId = stringToUniqueIdentifier(linearId))
+                linearId = linearId)
     }
     @InitiatedBy(TokenTransferCashFlow::class)
     class TransferFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {

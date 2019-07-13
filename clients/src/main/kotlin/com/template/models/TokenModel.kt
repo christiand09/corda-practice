@@ -3,6 +3,7 @@ package com.template.models
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.template.states.Details
 import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.identity.Party
 
 data class TokenModel(val details:Details,val lender:String,val borrower: String,
                       val requeststatus: String, val walletbalance: Long,
