@@ -264,13 +264,15 @@ class Controller(rpc: NodeRPCConnection, private val flowHandlerCompletion :Flow
     {
         val (status, result) = try {
             val attachment = AttachmentFlowModel(
-                    counterParty = modelAttachment.counterParty,
-                    hash = modelAttachment.hash
+                    hash = modelAttachment.hash,
+                    hash2 = modelAttachment.hash2,
+                    hash3 = modelAttachment.hash3
             )
             val flowReturn = proxy.startFlowDynamic(
                     AttachmentFlow::class.java,
-                    attachment.counterParty,
                     attachment.hash,
+                    attachment.hash2,
+                    attachment.hash3
             )
             flowHandlerCompletion.flowHandlerCompletion(flowReturn)
             HttpStatus.CREATED to modelAttachment

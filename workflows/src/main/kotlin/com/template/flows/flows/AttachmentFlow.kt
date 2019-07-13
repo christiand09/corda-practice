@@ -19,7 +19,8 @@ import net.corda.core.utilities.ProgressTracker
 @InitiatingFlow
 @StartableByRPC
 class AttachmentFlow (private val attachId: String,
-                      private val counterParty: String) : CashFunctions()
+                      private val attachId2: String,
+                      private val attachId3: String) : CashFunctions()
 {
     override val progressTracker = ProgressTracker(
             CREATING, VERIFYING, SIGNING, NOTARIZING, FINALIZING
@@ -28,9 +29,6 @@ class AttachmentFlow (private val attachId: String,
     @Suspendable
     override fun call(): SignedTransaction
     {
-        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
-                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
-
         progressTracker.currentStep = CREATING
         val updating = update()
 
@@ -48,14 +46,14 @@ class AttachmentFlow (private val attachId: String,
     private fun outState(): AttachmentState
     {
         val hash = SecureHash.sha256(attachId)
-
-        val counterRef = serviceHub.identityService.partiesFromName(counterParty, false).singleOrNull()
-                ?: throw IllegalArgumentException("No match found for Owner $counterParty.")
+        val hash2 = SecureHash.sha256(attachId2)
+        val hash3 = SecureHash.sha256(attachId3)
 
         return AttachmentState(
                 hash,
-                ourIdentity,
-                counterRef
+                hash2,
+                hash3,
+                ourIdentity
         )
     }
 
@@ -64,7 +62,6 @@ class AttachmentFlow (private val attachId: String,
                 Command(AttachmentContract.Attach,
                         outState().participants.map { it.owningKey })
         addOutputState(outState(), AttachmentContract.ATTACHMENT_PROGRAM_ID)
-        addAttachment(outState().hash)
         addCommand(attachmentCommand)
     }
 }

@@ -17,7 +17,7 @@ import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
-class CashTransferCash (private val amountTransfer: Long,
+class CashTransferFlow (private val amountTransfer: Long,
                         private val counterParty: String,
                         private val linearId: UniqueIdentifier) : CashFunctions()
 {
@@ -73,7 +73,7 @@ class CashTransferCash (private val amountTransfer: Long,
             }
 }
 
-@InitiatedBy(CashTransferCash::class)
+@InitiatedBy(CashTransferFlow::class)
 class CashTransferFlowResponder(val flowSession: FlowSession) : FlowLogic<SignedTransaction>()
 {
     @Suspendable

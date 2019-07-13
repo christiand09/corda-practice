@@ -14,19 +14,21 @@ import net.corda.core.utilities.ProgressTracker
 
 @InitiatingFlow
 @StartableByRPC
-class CashRegisterFlow (private val admin: String): CashFunctions()
+class CashRegisterFlow : CashFunctions()
 {
     @Suspendable
     override fun call(): SignedTransaction
     {
+        val admin = stringToParty("PartyC")
+
         progressTracker.currentStep = CREATING
-        val registration = register(stringToParty(admin))
+        val registration = register(admin)
 
         progressTracker.currentStep = VERIFYING
         progressTracker.currentStep = SIGNING
         val signedTransaction = verifyAndSign(transaction = registration)
         val sessions = emptyList<FlowSession>()
-        val adminSession = initiateFlow(stringToParty(admin))
+        val adminSession = initiateFlow(admin)
         val transactionSignedByParties = collectSignature(transaction = signedTransaction, sessions = sessions)
 
         progressTracker.currentStep = NOTARIZING
@@ -36,7 +38,7 @@ class CashRegisterFlow (private val admin: String): CashFunctions()
 
     private fun outState(): WalletState
     {
-        val admin = serviceHub.identityService.partiesFromName("PartyC", false).first()
+        val admin = stringToParty("PartyC")
         return WalletState(
                 wallet = 0,
                 amountIssued = 0,
