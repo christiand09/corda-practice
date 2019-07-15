@@ -1,4 +1,4 @@
-package com.template.flows
+package com.template.flows.clientFlows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.RegisterContract

@@ -2,6 +2,7 @@ package com.template.contracts
 
 import com.template.states.RegisterState
 import net.corda.core.contracts.*
+import net.corda.core.crypto.SecureHash
 import net.corda.core.transactions.LedgerTransaction
 
 // ************
@@ -21,6 +22,7 @@ class RegisterContract : Contract {
         class Verify : TypeOnlyCommandData(), Commands
         class Update : TypeOnlyCommandData(), Commands
         class UpdateRegister : TypeOnlyCommandData(), Commands
+        class Agree : TypeOnlyCommandData(), Commands
     }
 
     // A transaction is valid if the verify() function of the contract of all the transaction's input and output states
@@ -49,7 +51,18 @@ class RegisterContract : Contract {
 
             }
 
+
+
+
+
+
             }
         }
+
+
+
+
+
+
     }
 
