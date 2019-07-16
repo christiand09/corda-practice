@@ -5,6 +5,7 @@ import com.template.contracts.WalletContract
 import com.template.flows.cashfunctions.*
 import com.template.states.WalletState
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.TimeWindow
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
@@ -14,6 +15,8 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
+import java.time.Duration
+import java.time.Instant
 
 @InitiatingFlow
 @StartableByRPC
@@ -67,9 +70,11 @@ class CashTransferFlow (private val amountTransfer: Long,
             TransactionBuilder(notary = inputStateRef(linearId).state.notary).apply {
                 val transferCommand = Command(WalletContract.Commands.Transfer(), listOf(ourIdentity.owningKey, stringToParty(counterParty).owningKey))
                 val stateWithAdmin = outState().copy(participants = outState().participants + PartyC)
+                val timeWindow = TimeWindow.between(Instant.now(), Instant.now() + Duration.ofSeconds(5))
                 addInputState(inputStateRef(linearId))
                 addOutputState(stateWithAdmin, WalletContract.WALLET_ID)
                 addCommand(transferCommand)
+                setTimeWindow(timeWindow)
             }
 }
 

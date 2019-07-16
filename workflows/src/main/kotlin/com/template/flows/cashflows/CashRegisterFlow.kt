@@ -5,12 +5,15 @@ import com.template.contracts.WalletContract
 import com.template.flows.cashfunctions.*
 import com.template.states.WalletState
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.TimeWindow
 import net.corda.core.flows.*
 import net.corda.core.flows.ReceiveFinalityFlow
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
+import java.time.Duration
+import java.time.Instant
 
 @InitiatingFlow
 @StartableByRPC
@@ -52,10 +55,12 @@ class CashRegisterFlow : CashFunctions()
 
     private fun register(PartyC: Party): TransactionBuilder =
             TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first()).apply {
+//                val ourTimeWindow = TimeWindow.fromStartAndDuration(serviceHub.clock.instant(), Duration.ofSeconds(10))
                 val stateWithAdmin = outState().copy(participants = outState().participants + PartyC)
                 val registerCommand = Command(WalletContract.Commands.Register(), ourIdentity.owningKey)
                 addOutputState(stateWithAdmin, WalletContract.WALLET_ID)
                 addCommand(registerCommand)
+//                setTimeWindow(ourTimeWindow)
     }
 }
 
