@@ -1,11 +1,11 @@
-package com.template.flows
+package com.template.flows.personalRegistration
 
 import co.paralleluniverse.fibers.Suspendable
-import com.template.contracts.MyContract
-import com.template.contracts.MyContract.Companion.ID
-import com.template.states.MyState
-import com.template.states.Registered
+import com.template.contracts.PersonalContract
+import com.template.contracts.PersonalContract.Companion.PERSONALID
+import com.template.states.PersonalState
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.FlowLogic
@@ -17,7 +17,12 @@ import net.corda.core.transactions.TransactionBuilder
 
 @InitiatingFlow
 @StartableByRPC
-class MyRegisterFlow(private val registered: Registered) : FlowLogic<SignedTransaction>() {
+class PersonalCreateFlow(private val fullName: String,
+                         private val age : Int,
+                         private val birthDate : String,
+                         private val address : String,
+                         private val contactNumber: Int,
+                         private val status : String) : FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call(): SignedTransaction {
         val transaction = transaction()
@@ -30,14 +35,19 @@ class MyRegisterFlow(private val registered: Registered) : FlowLogic<SignedTrans
     private fun transaction(): TransactionBuilder {
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
-        val inputStatesRef = serviceHub.vaultService.queryBy<MyState>().states
-        val searchName = inputStatesRef.find { stateAndRef -> stateAndRef.state.data.registered.firstName == registered.firstName }
+        val inputStatesRef = serviceHub.vaultService.queryBy<PersonalState>().states
+        val searchName = inputStatesRef.find { stateAndRef -> stateAndRef.state.data.fullName == fullName }
 
-        lateinit var outputState: MyState
+        lateinit var outputState: ContractState
 
         if(searchName == null){
-            outputState = MyState(
-                    registered,
+            outputState = PersonalState(
+                    fullName,
+                    age,
+                    birthDate,
+                    address,
+                    contactNumber,
+                    status,
                     ourIdentity,
                     ourIdentity,
                     false,
@@ -49,16 +59,16 @@ class MyRegisterFlow(private val registered: Registered) : FlowLogic<SignedTrans
         }
 
 
-        val issueCommand = Command(MyContract.Commands.Register(), ourIdentity.owningKey)
+        val issueCommand = Command(PersonalContract.Commands.Register(), ourIdentity.owningKey)
         val builder = TransactionBuilder(notary)
-        builder.addOutputState(outputState, ID)
+        builder.addOutputState(outputState, PERSONALID)
         builder.addCommand(issueCommand)
         return builder
     }
 
     //Verifying and sigining the Transaction
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
-        println("collect Signed")
+        System.out.println("collect Signed")
         transaction.verify(serviceHub)
         return serviceHub.signInitialTransaction(transaction)
     }

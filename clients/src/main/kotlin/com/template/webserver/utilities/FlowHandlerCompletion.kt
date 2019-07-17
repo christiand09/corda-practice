@@ -5,8 +5,7 @@ import net.corda.core.transactions.SignedTransaction
 import org.springframework.stereotype.Service
 
 @Service
-class FlowHandlerCompletion
-{
+class FlowHandlerCompletion<T> {
     fun flowHandlerCompletion(flowReturn: FlowHandle<SignedTransaction>)
     {
         listOf(flowReturn).forEach { test -> test.returnValue.get() }

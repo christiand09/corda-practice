@@ -1,11 +1,11 @@
-package com.template.flows
+package com.template.flows.myOwnPracticeRegister
 
 import co.paralleluniverse.fibers.Suspendable
-import com.template.contracts.PersonalContract
-import com.template.contracts.PersonalContract.Companion.PERSONALID
-import com.template.states.PersonalState
+import com.template.contracts.MyContract
+import com.template.contracts.MyContract.Companion.ID
+import com.template.states.MyState
+import com.template.states.Registered
 import net.corda.core.contracts.Command
-import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.FlowLogic
@@ -14,20 +14,14 @@ import net.corda.core.flows.StartableByRPC
 import net.corda.core.node.services.queryBy
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
-import java.util.*
 
 @InitiatingFlow
 @StartableByRPC
-class PersonalCreateFlow(private val fullName: String,
-                         private val age : Int,
-                         private val birthDate : String,
-                         private val address : String,
-                         private val contactNumber: Int,
-                         private val status : String) : FlowLogic<SignedTransaction>() {
+class MyRegisterFlow(private val registered: Registered) : FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call(): SignedTransaction {
-        val transaction = transaction()
-        val signedTransaction = verifyAndSign(transaction)
+
+        val signedTransaction = verifyAndSign(transaction())
         return recordTransaction(signedTransaction)
     }
     //session if forward
@@ -36,19 +30,14 @@ class PersonalCreateFlow(private val fullName: String,
     private fun transaction(): TransactionBuilder {
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
-        val inputStatesRef = serviceHub.vaultService.queryBy<PersonalState>().states
-        val searchName = inputStatesRef.find { stateAndRef -> stateAndRef.state.data.fullName == fullName }
+        val inputStatesRef = serviceHub.vaultService.queryBy<MyState>().states
+        val searchName = inputStatesRef.find { stateAndRef -> stateAndRef.state.data.registered.firstName == registered.firstName }
 
-        lateinit var outputState: ContractState
+        lateinit var outputState: MyState
 
         if(searchName == null){
-            outputState = PersonalState(
-                    fullName,
-                    age,
-                    birthDate,
-                    address,
-                    contactNumber,
-                    status,
+            outputState = MyState(
+                    registered,
                     ourIdentity,
                     ourIdentity,
                     false,
@@ -60,16 +49,16 @@ class PersonalCreateFlow(private val fullName: String,
         }
 
 
-        val issueCommand = Command(PersonalContract.Commands.Register(), ourIdentity.owningKey)
+        val issueCommand = Command(MyContract.Commands.Register(), ourIdentity.owningKey)
         val builder = TransactionBuilder(notary)
-        builder.addOutputState(outputState, PERSONALID)
+        builder.addOutputState(outputState, ID)
         builder.addCommand(issueCommand)
         return builder
     }
 
     //Verifying and sigining the Transaction
     private fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
-        System.out.println("collect Signed")
+        println("collect Signed")
         transaction.verify(serviceHub)
         return serviceHub.signInitialTransaction(transaction)
     }

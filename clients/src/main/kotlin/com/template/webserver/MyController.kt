@@ -1,9 +1,9 @@
 package com.template.webserver
 
-import com.template.flows.MyRegisterFlow
-import com.template.flows.MyUpdateFlow
-import com.template.flows.MyUpdateVerifyFlow
-import com.template.flows.MyVerifyFlow
+import com.template.flows.myOwnPracticeRegister.MyRegisterFlow
+import com.template.flows.myOwnPracticeRegister.MyUpdateFlow
+import com.template.flows.myOwnPracticeRegister.MyUpdateVerifyFlow
+import com.template.flows.myOwnPracticeRegister.MyVerifyFlow
 import com.template.model.*
 import com.template.states.MyState
 import net.corda.core.messaging.vaultQueryBy

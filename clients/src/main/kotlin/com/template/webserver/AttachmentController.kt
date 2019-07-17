@@ -1,6 +1,6 @@
 package com.template.webserver
 
-import com.template.flows.AttachmentRegisterFlow
+import com.template.flows.attachment.AttachmentRegisterFlow
 import com.template.model.AttachmentModel
 import com.template.model.AttachmentRegisterModel
 import com.template.states.AttachmentState
@@ -34,7 +34,7 @@ private const val CONTROLLER_NAME = "config.controller.name"
 @RequestMapping("/") // The paths for HTTP requests are relative to this base path.
 class AttachmentController(
         private val rpc: NodeRPCConnection,
-        private val flowHandlerCompletion : FlowHandlerCompletion
+        private val flowHandlerCompletion : FlowHandlerCompletion<Any?>
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(RestController::class.java)

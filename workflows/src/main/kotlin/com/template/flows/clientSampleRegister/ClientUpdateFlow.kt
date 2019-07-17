@@ -1,4 +1,4 @@
-package com.template.flows
+package com.template.flows.clientSampleRegister
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.ClientContract
@@ -15,11 +15,10 @@ import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
-import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
-class ClientUpdateRegisterFlow(
+class ClientUpdateFlow(
         private var calls: Calls,
         private val counterparty: String,
         private val linearId: UniqueIdentifier): FlowLogic<SignedTransaction>(){
@@ -45,20 +44,71 @@ class ClientUpdateRegisterFlow(
 
     override val progressTracker = tracker()
 
+//    @Suspendable
+//    override fun call(): SignedTransaction {
+//
+//        val notary = serviceHub.networkMapCache.notaryIdentities.first()
+//
+//        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
+//        //get the information from KYCState
+//        val Vault = serviceHub.vaultService.queryBy<ClientState>(criteria).states.first()
+//        val input = Vault.state.data
+//
+//
+//
+//        if(calls.name=="")
+//            calls.name = input.calls.name
+//        if(calls.age=="")
+//            calls.age = input.calls.age
+//        if(calls.address=="")
+//            calls.address = input.calls.address
+//        if(calls.birthDate=="")
+//            calls.birthDate = input.calls.birthDate
+//        if(calls.status=="")
+//            calls.status = input.calls.status
+//        if(calls.religion=="")
+//            calls.religion = input.calls.religion
+//
+//
+//
+//        val outputState = ClientState(calls,ourIdentity,counterparty,true,input.linearId)
+//
+//        val cmd = Command(ClientContract.Commands.Verify(),listOf(counterparty.owningKey, ourIdentity.owningKey))
+//
+//        val txBuilder = TransactionBuilder(notary)
+//                .addInputState(Vault)
+//                .addOutputState(outputState, ID)
+//                .addCommand(cmd)
+//
+//
+//        txBuilder.verify(serviceHub)
+//
+//
+//        val signedTx = serviceHub.signInitialTransaction(txBuilder)
+//        val sessions= initiateFlow(counterparty)
+//
+//
+//
+//        //Notarize then Record the transaction
+//        val stx = subFlow(CollectSignaturesFlow(signedTx, listOf(sessions)))
+//        return subFlow(FinalityFlow(stx,sessions))
+//
+//    }
+
     @Suspendable
     override fun call(): SignedTransaction {
-        progressTracker.currentStep = BUILDING_TRANSACTION
-        progressTracker.currentStep = VERIFY_TRANSACTION
-        progressTracker.currentStep = SIGN_TRANSACTION
-        progressTracker.currentStep = NOTARIZE_TRANSACTION
-        progressTracker.currentStep = RECORD_TRANSACTION
+    progressTracker.currentStep = BUILDING_TRANSACTION
+    progressTracker.currentStep = VERIFY_TRANSACTION
+    progressTracker.currentStep = SIGN_TRANSACTION
+    progressTracker.currentStep = NOTARIZE_TRANSACTION
+    progressTracker.currentStep = RECORD_TRANSACTION
         val unUpdated= userUpdate()
         val signedTransaction = verifyAndSign(unUpdated)
         val counterRef = serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
                 ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
-        val sessions= initiateFlow(counterRef)
-        val transactionSignedByAllParties: SignedTransaction=collectSignature(signedTransaction, listOf(sessions))
-        sessions.send(calls)
+//        val sessions=(outputState().participants-ourIdentity).map {initiateFlow(it)}.toList()
+        val sessions = initiateFlow(counterRef)
+        val transactionSignedByAllParties=collectSignature(signedTransaction, listOf(sessions))
         return recordTransaction(transactionSignedByAllParties, listOf(sessions))
     }
     private fun inputStateRef(): StateAndRef<ClientState> {
@@ -113,8 +163,8 @@ class ClientUpdateRegisterFlow(
 
 }
 
-@InitiatedBy(ClientUpdateRegisterFlow::class)
-class ClientUpdateRegisterFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
+@InitiatedBy(ClientUpdateFlow::class)
+class UpdateFlowResponder(val flowSession: FlowSession): FlowLogic<SignedTransaction>() {
 
     @Suspendable
     override fun call(): SignedTransaction {
@@ -126,8 +176,7 @@ class ClientUpdateRegisterFlowResponder(val flowSession: FlowSession): FlowLogic
         }
 
         val txWeJustSignedId = subFlow(signedTransactionFlow)
-        val payload = flowSession.receive(Calls::class.java).unwrap { it }
-        subFlow(ClientRegisterFlow(payload))
+
         return subFlow(ReceiveFinalityFlow(otherSideSession = flowSession, expectedTxId = txWeJustSignedId.id))
     }
 }
