@@ -2,8 +2,6 @@ package com.template.flows.TokenFlow
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.TokenContract
-import net.corda.core.contracts.StateAndRef
-import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
@@ -11,8 +9,10 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import com.template.states.TokenState
-import net.corda.core.contracts.Command
+import net.corda.core.contracts.*
 import net.corda.core.flows.*
+import java.time.Duration
+import java.time.Instant
 
 
 abstract class TransactionFlows : FlowLogic<SignedTransaction>() {
@@ -26,30 +26,8 @@ abstract class TransactionFlows : FlowLogic<SignedTransaction>() {
         return serviceHub.signInitialTransaction(transaction)
     }
 
-//    @Suspendable
-//    fun collectSignature(
-//            transaction: SignedTransaction,
-//            sessions: List<FlowSession>
-//    ): SignedTransaction = subFlow(CollectSignaturesFlow(transaction, sessions))
-//
-//    @Suspendable
-//    fun recordTransactionWithOtherParty(transaction: SignedTransaction, sessions: List<FlowSession>) : SignedTransaction {
-//        progressTracker.currentStep = FINALIZING
-//        return subFlow(FinalityFlow(transaction, sessions))
-//    }
-//
-//    @Suspendable
-//    fun recordTransactionWithoutOtherParty(transaction: SignedTransaction) : SignedTransaction {
-//        progressTracker.currentStep = FINALIZING
-//        return subFlow(FinalityFlow(transaction, emptyList()))
-//    }
     fun stringToUniqueIdentifier(id: String): UniqueIdentifier {
         return UniqueIdentifier.fromString(id)
-    }
-    fun stringtoParty(counterparty:String): Party
-    {
-        return serviceHub.identityService.partiesFromName(counterparty, false).singleOrNull()
-                ?: throw IllegalArgumentException("No match found for Owner $counterparty.")
     }
 
     fun inputStateAndRefTokenState(id: String): StateAndRef<TokenState> {
@@ -63,21 +41,30 @@ abstract class TransactionFlows : FlowLogic<SignedTransaction>() {
                 addOutputState(spiedOnMessage, TokenContract.TOKEN_ID)
                 addCommand(command)
             }
-    fun transactionwithinput(admin:Party,state:TokenState,command: Command<TokenContract.Commands.Token>,linearId: String,notary: Party)
-            = TransactionBuilder(notary = notary)
+    fun transactionwithinput(admin:Party,state:TokenState, command: Command<TokenContract.Commands.Token>,
+                             linearId: String, notary: Party) = TransactionBuilder(notary = notary)
             .apply {
                 val spiedOnMessage = state.copy(participants = state.participants + admin)
                 addInputState(inputStateAndRefTokenState(linearId))
                 addOutputState(spiedOnMessage, TokenContract.TOKEN_ID)
                 addCommand(command)
             }
-    fun fullypaidtransaction(admin: Party,state: TokenState,command: Command<TokenContract.Commands.Token>,linearId: String,notary:Party) = TransactionBuilder(notary = notary)
+    fun fullypaidtransaction(admin: Party, state: TokenState,
+                             command: Command<TokenContract.Commands.Token>,
+                             linearId: String,notary:Party) = TransactionBuilder(notary = notary)
             .apply {
                 val settle = state.copy(participants = listOf(admin))
                 addInputState(inputStateAndRefTokenState(linearId))
                 addOutputState(settle,TokenContract.TOKEN_ID)
                 addCommand(command)
             }
+    fun getTime(linearId: String): Instant
+    {
+        val outputStateRef = StateRef(txhash = inputStateAndRefTokenState(linearId).ref.txhash, index = 0)
+        val queryCriteria = QueryCriteria.VaultQueryCriteria(stateRefs = listOf(outputStateRef))
+        val results = serviceHub.vaultService.queryBy<TokenState>(queryCriteria)
+        return results.statesMetadata.single().recordedTime
+    }
     @InitiatingFlow
     class CollectSignaturesInitiatingFlow(private val transaction: SignedTransaction,
                                           private val signers: List<Party>): FlowLogic<SignedTransaction>()

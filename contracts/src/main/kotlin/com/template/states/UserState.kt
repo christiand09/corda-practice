@@ -16,8 +16,6 @@ data class UserState(val name: UserDetails,
                      override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState
 @CordaSerializable
 data class UserDetails(var fullname:String,
-                var age: String,
-                var gender: String,
                 var address: String)
 
 
