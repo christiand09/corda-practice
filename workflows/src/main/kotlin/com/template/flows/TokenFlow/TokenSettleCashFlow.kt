@@ -4,13 +4,14 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.TokenContract
 import com.template.states.TokenState
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 
 @InitiatingFlow
 @StartableByRPC
-class TokenSettleCashFlow (val linearId: String, val lender: String, val amount: Long): TransactionFlows()
+class TokenSettleCashFlow (val linearId: UniqueIdentifier, val lender: String, val amount: Long): TransactionFlows()
 {
     @Suspendable
     override fun call(): SignedTransaction {
@@ -43,13 +44,13 @@ class TokenSettleCashFlow (val linearId: String, val lender: String, val amount:
         {
             return TokenState(input.details,lend,
                     input.borrower,"partially paid", input.settle(amount).walletbalance,
-                    input.amountborrowed,input.paidamount(amount).amountpaid, linearId = stringToUniqueIdentifier(linearId))
+                    input.amountborrowed,input.paidamount(amount).amountpaid, linearId = linearId)
         }
         else
         {
             return TokenState(input.details, lend,
                     input.borrower, "fully paid", input.settle(amount).walletbalance,
-                    input.amountborrowed, paid, linearId = stringToUniqueIdentifier(linearId))
+                    input.amountborrowed, paid, linearId = linearId)
         }
     }
     @InitiatedBy(TokenSettleCashFlow::class)
