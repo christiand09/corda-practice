@@ -116,7 +116,18 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
             address("localhost:10006")
             adminAddress("localhost:10046")
         }
-        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
+        extraConfig = [
+                'dataSourceProperties' : [
+                        'dataSourceClassName' : 'org.postgresql.ds.PGSimpleDataSource',
+                        'dataSource.url' : 'jdbc:postgresql://localhost:8080/postgres?currentSchema=public',
+                        'dataSource.user' : 'postgres',
+                        'dataSource.password' : 'admin'
+                ],
+                'database': [
+                        'transactionIsolationLevel': 'READ_COMMITTED'
+                ],
+        ]
+        rpcUsers = [[ user: "postgres", "password": "admin", "permissions": ["ALL"]]]
     }
     node {
         name "O=PartyB,L=New York,C=US"
@@ -127,15 +138,15 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         }
         rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
     }
-//    node {
-//        name "O=PartyC,L=New York,C=US"
-//        p2pPort 10011
-//        rpcSettings {
-//            address("localhost:10012")
-//            adminAddress("localhost:10052")
-//        }
-//        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
-//    }
+    node {
+        name "O=PartyC,L=New York,C=US"
+        p2pPort 10011
+        rpcSettings {
+            address("localhost:10012")
+            adminAddress("localhost:10052")
+        }
+        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
+    }
 }
 
 task installQuasar(type: Copy) {
