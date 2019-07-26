@@ -45,33 +45,26 @@ abstract class TransactionFlows : FlowLogic<SignedTransaction>() {
                 addOutputState(spiedOnMessage, TokenContract.TOKEN_ID)
                 addCommand(command)
             }
-<<<<<<< HEAD
+
     fun transactionwithinput(admin:Party,state:TokenState, command: Command<TokenContract.Commands.Token>,
                              linearId: String, notary: Party) = TransactionBuilder(notary = notary)
-=======
     fun transactionwithinput(admin:Party,state:TokenState,command: Command<TokenContract.Commands.Token>,linearId: UniqueIdentifier,notary: Party)
             = TransactionBuilder(notary = notary)
->>>>>>> a8a14a4ae2dbac04475c336cbcca7feeda5564ef
             .apply {
                 val spiedOnMessage = state.copy(participants = state.participants + admin)
                 addInputState(inputStateAndRefTokenState(linearId))
                 addOutputState(spiedOnMessage, TokenContract.TOKEN_ID)
                 addCommand(command)
             }
-<<<<<<< HEAD
-    fun fullypaidtransaction(admin: Party, state: TokenState,
-                             command: Command<TokenContract.Commands.Token>,
-                             linearId: String,notary:Party) = TransactionBuilder(notary = notary)
-=======
+
     fun fullypaidtransaction(admin: Party,state: TokenState,command: Command<TokenContract.Commands.Token>,linearId: UniqueIdentifier,notary:Party) = TransactionBuilder(notary = notary)
->>>>>>> a8a14a4ae2dbac04475c336cbcca7feeda5564ef
             .apply {
                 val settle = state.copy(participants = listOf(admin))
                 addInputState(inputStateAndRefTokenState(linearId))
                 addOutputState(settle,TokenContract.TOKEN_ID)
                 addCommand(command)
             }
-    fun getTime(linearId: String): Instant
+    fun getTime(linearId: UniqueIdentifier): Instant
     {
         val outputStateRef = StateRef(txhash = inputStateAndRefTokenState(linearId).ref.txhash, index = 0)
         val queryCriteria = QueryCriteria.VaultQueryCriteria(stateRefs = listOf(outputStateRef))

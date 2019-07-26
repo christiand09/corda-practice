@@ -4,11 +4,8 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.TokenContract
 import com.template.states.TokenState
 import net.corda.core.contracts.Command
-<<<<<<< HEAD
 import net.corda.core.contracts.TimeWindow
-=======
 import net.corda.core.contracts.UniqueIdentifier
->>>>>>> a8a14a4ae2dbac04475c336cbcca7feeda5564ef
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
