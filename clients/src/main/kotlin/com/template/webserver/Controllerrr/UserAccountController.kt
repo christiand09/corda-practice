@@ -411,5 +411,41 @@ class UserAccountController(
         return ResponseEntity.status(status).body(mapOf(stat,mess,res))
     }
 
+
+
+
+
+//    @GetMapping(value = "/states/user/{linearId}", produces = arrayOf("application/json"))
+//    private fun getMyStatee(@PathVariable linearId: String) : ResponseEntity<Map<String,Any>>{
+//        val (status, result ) = try {
+//            val requestStateRef = rpc.proxy.vaultQueryBy<MyState>().states
+//            val requestStates = requestStateRef.filter { x -> x.state.data.linearId == UniqueIdentifier.fromString(linearId) }
+//            val list = requestStates.map {
+//                userAccountModel(
+//                        formSet = it.state.data.formSet,
+//                        sender = it.state.data.sender.toString(),
+//                        receiver = it.state.data.receiver.toString(),
+//                        spy = it.state.data.spy.toString(),
+//                        wallet = it.state.data.wallet,
+//                        amountdebt = it.state.data.amountdebt,
+//                        amountpaid = it.state.data.amountpaid,
+//                        status = it.state.data.status,
+//                        debtFree = it.state.data.debtFree,
+//                        approvals = it.state.data.approvals,
+//                        linearId = it.state.data.linearId
+//                )
+//            }
+//            HttpStatus.CREATED to list
+//        }catch( e: Exception){
+//            HttpStatus.BAD_REQUEST to "No data"
+//        }
+//        val stat = "status" to status
+//        val mess = if (status==HttpStatus.CREATED){
+//            "message" to "Successful in getting all states"}
+//        else{ "message" to "Failed to get all states"}
+//        val res = "result" to result
+//        return ResponseEntity.status(status).body(mapOf(stat,mess,res))
+//    }
+
 }
 
