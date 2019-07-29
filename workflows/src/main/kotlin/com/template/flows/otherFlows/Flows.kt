@@ -1,4 +1,4 @@
-package com.template.flows.otherflows
+package com.template.flows.otherFlows
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.flows.*

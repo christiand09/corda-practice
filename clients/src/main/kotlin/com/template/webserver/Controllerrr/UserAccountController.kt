@@ -1,10 +1,10 @@
 package com.template.webserver.Controllerrr
 
-import com.template.flows.CashFlows.*
-import com.template.flows.DataFlows.RegisterUserFlow
-import com.template.flows.DataFlows.VerifyUserFlow
-import com.template.flows.DataFlows.UpdateUserFlow
-//import com.template.flows.otherflows.UpdateRegisterUserFlow
+import com.template.flows.cashFlows.*
+import com.template.flows.dataFlows.RegisterUserFlow
+import com.template.flows.dataFlows.VerifyUserFlow
+import com.template.flows.dataFlows.UpdateUserFlow
+//import com.template.flows.otherFlows.UpdateRegisterUserFlow
 import com.template.states.MyState
 import com.template.webserver.NodeRPCConnection
 import net.corda.core.messaging.vaultQueryBy
@@ -15,9 +15,7 @@ import org.springframework.web.bind.annotation.*
 //import com.template.flow.Encryption.md5
 import com.template.models.*
 import com.template.webserver.utilities.FlowHandlerCompletion
-import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.crypto.SecureHash
-import net.corda.core.identity.Party
 import org.springframework.core.io.InputStreamResource
 import org.springframework.http.HttpHeaders
 import org.springframework.web.multipart.MultipartFile

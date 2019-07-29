@@ -25,52 +25,44 @@ abstract class FlowFunction : FlowLogic<SignedTransaction>() {
 
     override val progressTracker = ProgressTracker(INITIALIZING, BUILDING, SIGNING, COLLECTING, FINALIZING)
 
-    fun inputStateRef(linearId: UniqueIdentifier): StateAndRef<MyState> {
-        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-        return serviceHub.vaultService.queryBy<MyState>(criteria).states.single()
-    }
-
     fun verifyAndSign(transaction: TransactionBuilder): SignedTransaction {
         progressTracker.currentStep = SIGNING
         transaction.verify(serviceHub)
         return serviceHub.signInitialTransaction(transaction)
     }
 
+    @Suspendable
+    fun collectSignature(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction {
+        progressTracker.currentStep = COLLECTING
+        return subFlow(CollectSignaturesFlow(transaction, sessions))}
 
     @Suspendable
-    fun collectSignature(
-            transaction: SignedTransaction,
-            sessions: List<FlowSession>
-    ): SignedTransaction = subFlow(CollectSignaturesFlow(transaction, sessions))
-
-    @Suspendable
-    fun recordTransactionWithOtherParty(transaction: SignedTransaction, sessions: List<FlowSession>) : SignedTransaction {
+    fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction {
         progressTracker.currentStep = FINALIZING
         return subFlow(FinalityFlow(transaction, sessions))
     }
 
-    /** OR  */
-
-    @Suspendable
-    private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
-            subFlow(FinalityFlow(transaction, sessions))
-
-    @Suspendable
-    fun recordTransactionWithoutOtherParty(transaction: SignedTransaction) : SignedTransaction {
-        progressTracker.currentStep = FINALIZING
-        return subFlow(FinalityFlow(transaction, emptyList()))
-    }
 
     fun stringToParty(name: String): Party {
         return serviceHub.identityService.partiesFromName(name, false).singleOrNull()
                 ?: throw IllegalArgumentException("No match found for $name")
     }
 
+    fun stringToPartySpy(name: String): Party {
+        return serviceHub.identityService.partiesFromName(name, false).first()
+                ?: throw IllegalArgumentException("No match found for $name")
+    }
+
+    fun inputStateRef(linearId: UniqueIdentifier): StateAndRef<MyState> {
+        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
+        return serviceHub.vaultService.queryBy<MyState>(criteria).states.single()
+    }
+
     fun stringToUniqueIdentifier(id: String): UniqueIdentifier {
         return UniqueIdentifier.fromString(id)
     }
 
-    fun inputStateAndRefUserState(id: String): StateAndRef<MyState> {
+    fun inputStateAndRef(id: String): StateAndRef<MyState> {
         val queryCriteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(stringToUniqueIdentifier(id)))
         return serviceHub.vaultService.queryBy<MyState>(queryCriteria).states.single()
     }

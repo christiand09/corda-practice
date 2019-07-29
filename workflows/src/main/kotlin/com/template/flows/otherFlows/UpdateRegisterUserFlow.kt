@@ -1,8 +1,8 @@
-package com.template.flows.otherflows
+package com.template.flows.otherFlows
 //
 //import co.paralleluniverse.fibers.Suspendable
 //import com.template.contracts.MyContract
-//import com.template.flows.DataFlows.RegisterUserFlow
+//import com.template.flows.dataFlows.RegisterUserFlow
 //import com.template.states.MyState
 //import com.template.states.formSet
 //import net.corda.core.contracts.Command

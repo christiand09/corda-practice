@@ -1,4 +1,4 @@
-package com.template.flows.CashFlows
+package com.template.flows.cashFlows
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.contracts.Command
 import net.corda.core.flows.*
@@ -7,21 +7,22 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import com.template.states.MyState
 import com.template.contracts.MyContract
-import com.template.flows.FlowFunction
+import com.template.flows.*
 //import com.template.states.formSet
-import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.node.services.queryBy
-import net.corda.core.node.services.vault.QueryCriteria
+import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
 
 @InitiatingFlow
 @StartableByRPC
-class SelfIssueCashFlow(private val amount: Int,  private val linearId: UniqueIdentifier = UniqueIdentifier()): FlowFunction() {
+class SelfIssueCashFlow(private val amount: Int,
+                        private val linearId: UniqueIdentifier = UniqueIdentifier()): FlowFunction() {
+    override val progressTracker = ProgressTracker(INITIALIZING, BUILDING, SIGNING, COLLECTING, FINALIZING)
 
     @Suspendable
     override fun call(): SignedTransaction {
-        val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
+        progressTracker.currentStep = INITIALIZING
+        val spy = stringToPartySpy("PartyC")
         val spySession = initiateFlow(spy)
         spySession.send(false)
         val transaction: TransactionBuilder = transaction(spy)
@@ -31,14 +32,10 @@ class SelfIssueCashFlow(private val amount: Int,  private val linearId: UniqueId
         return recordTransaction(transactionSignedByAllParties, listOf(spySession))
     }
 
-    private fun inputStateRef(): StateAndRef<MyState> {
-        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-        return serviceHub.vaultService.queryBy<MyState>(criteria).states.single()
-    }
 
     private fun outputState(): MyState {
-        val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
-        val input = inputStateRef().state.data
+        val spy = stringToPartySpy("PartyC")
+        val input = inputStateRef(linearId).state.data
         return MyState(
                 input.formSet,
                 ourIdentity,
@@ -54,21 +51,17 @@ class SelfIssueCashFlow(private val amount: Int,  private val linearId: UniqueId
         )
     }
     private fun transaction(spy: Party): TransactionBuilder {
+        progressTracker.currentStep = BUILDING
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
-//        val input = inputStateRef().state.data
-//        val MyState = MyState(firstName,lastName,age, gender,address, ourIdentity, ourIdentity)
-                val anotherOutputState = outputState().copy(participants = listOf(ourIdentity, spy))
+        val anotherOutputState = outputState().copy(participants = listOf(ourIdentity, spy))
         val issueCommand = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
         val builder = TransactionBuilder(notary = notary )
-        builder.addInputState(inputStateRef())
+        builder.addInputState(inputStateRef(linearId))
         builder.addOutputState(anotherOutputState, MyContract.IOU_CONTRACT_ID)
         builder.addCommand(issueCommand)
         return builder
     }
 
-    @Suspendable
-    private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
-            subFlow(FinalityFlow(transaction, sessions))
 }
 /**
  * This is the flow which signs IOU issuances.

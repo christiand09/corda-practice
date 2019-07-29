@@ -1,4 +1,4 @@
-package com.template.flows.DataFlows
+package com.template.flows.dataFlows
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.contracts.Command
@@ -8,18 +8,21 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import com.template.states.MyState
 import com.template.contracts.MyContract
-import com.template.flows.FlowFunction
+import com.template.flows.*
 import com.template.states.formSet
+import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
 
 
 @InitiatingFlow
 @StartableByRPC
 class RegisterUserFlow(private val formSet: formSet): FlowFunction() {
+    override val progressTracker = ProgressTracker(INITIALIZING, BUILDING, SIGNING, COLLECTING, FINALIZING)
 
     @Suspendable
     override fun call(): SignedTransaction {
-        val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
+        progressTracker.currentStep = INITIALIZING
+        val spy = stringToPartySpy("PartyC")
         val spySession = initiateFlow(spy)
         spySession.send(false)
         val transaction: TransactionBuilder = transaction(spy)
@@ -30,7 +33,7 @@ class RegisterUserFlow(private val formSet: formSet): FlowFunction() {
     }
 
     private fun outputState(): MyState
-    {val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
+    {val spy = stringToPartySpy("PartyC")
         return MyState(
                 formSet,
                 ourIdentity,
@@ -46,8 +49,8 @@ class RegisterUserFlow(private val formSet: formSet): FlowFunction() {
     }
 
     private fun transaction(spy:Party): TransactionBuilder {
+        progressTracker.currentStep = BUILDING
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
-//      val MyState = MyState(firstName,lastName,age, gender,address, ourIdentity, ourIdentity)
         val issueCommand = Command(MyContract.Commands.Issue(),ourIdentity.owningKey)
         val spiedOnMessage = outputState().copy(participants = listOf(ourIdentity, spy))
         val builder = TransactionBuilder(notary = notary )
@@ -55,15 +58,8 @@ class RegisterUserFlow(private val formSet: formSet): FlowFunction() {
         builder.addCommand(issueCommand)
         return builder
     }
-
-    @Suspendable
-    private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
-            subFlow(FinalityFlow(transaction, sessions))
 }
-/**
- * This is the flow which signs IOU issuances.
- * The signing is handled by the [SignTransactionFlow].
- */
+
 @InitiatedBy(RegisterUserFlow::class)
 class RegisterUserFlowResponder(private val sessions: FlowSession) : FlowLogic<SignedTransaction>() {
 

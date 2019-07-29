@@ -1,4 +1,4 @@
-package com.template.flows.otherflows
+package com.template.flows.otherFlows
 
 //package com.template.flows
 //

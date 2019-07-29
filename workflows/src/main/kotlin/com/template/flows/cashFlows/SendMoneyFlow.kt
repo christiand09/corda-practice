@@ -1,17 +1,15 @@
-package com.template.flows.DataFlows
+package com.template.flows.cashFlows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.MyContract
-import com.template.flows.FlowFunction
+import com.template.flows.*
 import com.template.states.MyState
 import net.corda.core.contracts.Command
 import net.corda.core.flows.*
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
-import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.node.services.queryBy
-import net.corda.core.node.services.vault.QueryCriteria
+import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
 
 /**
@@ -22,75 +20,71 @@ import net.corda.core.utilities.unwrap
  */
 @InitiatingFlow
 @StartableByRPC
-class VerifyUserFlow(
-                    val receiver: String,
-                    val linearId: UniqueIdentifier = UniqueIdentifier()): FlowFunction() {
+class SendMoneyFlow(private val receiver: String,
+                    private val amount: Int,
+                    private val linearId: UniqueIdentifier = UniqueIdentifier()): FlowFunction() {
+    override val progressTracker = ProgressTracker(INITIALIZING, BUILDING, SIGNING, COLLECTING, FINALIZING)
 
     @Suspendable
     override fun call(): SignedTransaction {
-        val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
+        progressTracker.currentStep = INITIALIZING
+        if (!outputState().approvals){
+            throw IllegalArgumentException("${outputState().formSet.firstName} is not yet a verified user.")
+        }
+        else
+        {
+        val spy = stringToPartySpy("PartyC")
         val spySession = initiateFlow(spy)
         spySession.send(false)
         val transaction: TransactionBuilder = transaction()
         val signedTransaction: SignedTransaction = verifyAndSign(transaction)
-        val counterRef = serviceHub.identityService.partiesFromName(receiver, false).singleOrNull()
-                ?: throw IllegalArgumentException("No match found for Owner $receiver.")
+        val counterRef = stringToParty(receiver)
         val sessions = initiateFlow(counterRef)
         sessions.send(true)
         val transactionSignedByAllParties: SignedTransaction = collectSignature(signedTransaction, listOf(sessions))
         return recordTransaction(transactionSignedByAllParties, listOf(sessions, spySession))
-    }
-
-    private fun inputStateRef(): StateAndRef<MyState> {
-        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
-        return serviceHub.vaultService.queryBy<MyState>(criteria).states.single()
-    }
+    }}
 
     private fun outputState(): MyState {
-        val input = inputStateRef().state.data
-        val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
-        //return MyState(input.firstName,input.lastName,input.age,input.gender,input.address,ourIdentity, receiver, true,linearId = linearId)
-        val counterRef = serviceHub.identityService.partiesFromName(receiver, false).singleOrNull()
-                ?: throw IllegalArgumentException("No match found for Owner $receiver.")
+        val spy = stringToPartySpy("PartyC")
+        val input = inputStateRef(linearId).state.data
+        val counterRef = stringToParty(receiver)
         return MyState(
                 formSet =  input.formSet,
                 sender = ourIdentity,
-                receiver = counterRef,
-                spy = spy,
-                wallet = input.wallet ,
-                amountdebt = input.amountdebt,
-                amountpaid = input.amountpaid ,
-                status = "${input.formSet.firstName} is now a Verified User",
-                debtFree = input.debtFree,
-                approvals = true,
+                receiver =counterRef,
+                spy = input.spy,
+                wallet = input.wallet + amount,
+                amountdebt = input.amountdebt + amount,
+                amountpaid = input.amountpaid,
+                status = "Sending $amount to $counterRef",
+                debtFree = false,
+                approvals = input.approvals,
                 linearId = linearId,
                 participants = listOf(ourIdentity, counterRef, spy)
+
         )
     }
 
     private fun transaction(): TransactionBuilder {
+        progressTracker.currentStep = BUILDING
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
-        val spy = serviceHub.identityService.partiesFromName("PartyC", false).first()
-//      val cmd = Command(MyContract.Commands.Verify(), listOf(outputState().receiver, outputState().sender).map(Party::owningKey))
+        val spy = stringToPartySpy("PartyC")
         val cmd = Command(MyContract.Commands.Verify(), (outputState().participants - spy).map { it.owningKey })
         val builder = TransactionBuilder(notary = notary)
-        builder.addInputState(inputStateRef())
+        builder.addInputState(inputStateRef(linearId))
         builder.addOutputState(outputState(), MyContract.IOU_CONTRACT_ID)
         builder.addCommand(cmd)
         return builder
     }
-
-    @Suspendable
-    private fun recordTransaction(transaction: SignedTransaction, sessions: List<FlowSession>): SignedTransaction =
-            subFlow(FinalityFlow(transaction, sessions))
 }
+
 /**
  * This is the flow which signs IOU issuances.
  * The signing is handled by the [SignTransactionFlow].
  */
-
-@InitiatedBy(VerifyUserFlow::class)
-class VerifyUserFlowResponder(private val sessions: FlowSession) : FlowLogic<SignedTransaction>() {
+@InitiatedBy(SendMoneyFlow::class)
+class SendMoneyFlowFlowResponder(private val sessions: FlowSession) : FlowLogic<SignedTransaction>() {
 
     @Suspendable
     override fun call(): SignedTransaction {

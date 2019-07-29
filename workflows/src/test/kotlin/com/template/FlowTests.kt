@@ -1,6 +1,6 @@
 package com.template
 
-import com.template.flows.otherflows.Responder
+import com.template.flows.otherFlows.Responder
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetworkParameters
 import net.corda.testing.node.TestCordapp
