@@ -17,8 +17,9 @@ import net.corda.core.utilities.ProgressTracker
 //import org.apache.commons.mail.DefaultAuthenticator
 //import org.apache.commons.mail.HtmlEmail
 import com.template.states.MyState
+import com.template.states.TimeWindowState
 import net.corda.core.contracts.Command
-
+import java.time.Instant
 
 
 abstract class FlowFunction : FlowLogic<SignedTransaction>() {
@@ -58,6 +59,11 @@ abstract class FlowFunction : FlowLogic<SignedTransaction>() {
         return serviceHub.vaultService.queryBy<MyState>(criteria).states.single()
     }
 
+    fun iState(linearId: UniqueIdentifier): StateAndRef<TimeWindowState> {
+        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId))
+        return serviceHub.vaultService.queryBy<TimeWindowState>(criteria).states.single()
+    }
+
     fun stringToUniqueIdentifier(id: String): UniqueIdentifier {
         return UniqueIdentifier.fromString(id)
     }
@@ -65,6 +71,13 @@ abstract class FlowFunction : FlowLogic<SignedTransaction>() {
     fun inputStateAndRef(id: String): StateAndRef<MyState> {
         val queryCriteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(stringToUniqueIdentifier(id)))
         return serviceHub.vaultService.queryBy<MyState>(queryCriteria).states.single()
+    }
+
+    fun getTime(id: UniqueIdentifier): Instant {
+        val outputStateRef = net.corda.core.contracts.StateRef(txhash = iState(id).ref.txhash, index = 0)
+        val queryCriteria = QueryCriteria.VaultQueryCriteria(stateRefs = listOf(outputStateRef))
+        val results = serviceHub.vaultService.queryBy<TimeWindowState>(queryCriteria)
+        return results.statesMetadata.single().recordedTime.plusSeconds(30)
     }
 
 
