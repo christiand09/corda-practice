@@ -31,7 +31,7 @@ class UserAccountController(
     /**
      * Return all UserAccountState
      */
-    @GetMapping(value = "/states/user", produces = ["application/json"])
+    @GetMapping(value = ["/states/user"], produces = ["application/json"])
     private fun getUserAccountStates() : ResponseEntity<Map<String, Any>> {
         val (status, result ) = try {
             val requestStateRef = rpc.proxy.vaultQueryBy<ClientState>().states
@@ -61,7 +61,7 @@ class UserAccountController(
      * REGISTER - UserAccountRegisterFlow
      */
 
-    @PostMapping(value = "/states/user/create", produces = ["application/json"])
+    @PostMapping(value = ["/states/user/create"], produces = ["application/json"])
     private fun createUserAccount(@RequestBody createUserAccount: CreateUserAccount) : ResponseEntity<Map<String,Any>> {
 
         val (status, result) = try {
@@ -91,7 +91,7 @@ class UserAccountController(
      * VERIFY - UserAccountVerifyFlow
      */
 
-    @PostMapping(value = "/states/user/verify", produces = ["application/json"])
+    @PostMapping(value = ["/states/user/verify"], produces = ["application/json"])
     private fun verifyUserAccount(@RequestBody verifyUserAccount: VerifyUserAccount) : ResponseEntity<Map<String,Any>> {
 
         val (status, result) = try {
@@ -122,7 +122,7 @@ class UserAccountController(
      * Update - UserAccountUpdateFlow
      */
 
-    @PutMapping (value = "states/user/update", produces = ["application/json"])
+    @PutMapping (value = ["states/user/update"], produces = ["application/json"])
     private fun updateUserAccount (@RequestBody updateUserAccount: UpdateUserAccount) : ResponseEntity <Map<String,Any>> {
 
         val (status, result) = try {
@@ -156,7 +156,7 @@ class UserAccountController(
      * UpdateRegister - UserAccountUpdateRegisterFlow
      */
 
-    @PutMapping (value = "states/user/updateRegister", produces = ["application/json"])
+    @PutMapping (value = ["states/user/updateRegister"], produces = ["application/json"])
     private fun updateRegisterAccount (@RequestBody updateRegisterAccount: UpdateRegisterAccount) : ResponseEntity <Map<String,Any>>{
 
         val (status, result) = try {

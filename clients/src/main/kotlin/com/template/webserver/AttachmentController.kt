@@ -46,7 +46,7 @@ class AttachmentController(
     /**
      * Return all UserAccountState
      */
-    @GetMapping(value = "/attachment", produces = ["application/json"])
+    @GetMapping(value = ["/attachment"], produces = ["application/json"])
     private fun getUserAccountStates(): ResponseEntity<Map<String, Any>> {
         val (status, result) = try {
             val requestStateRef = rpc.proxy.vaultQueryBy<AttachmentState>().states
@@ -83,14 +83,14 @@ class AttachmentController(
 
 
 
-    @PostMapping (value = "/attachment/upload", produces = ["application/json"])
+    @PostMapping (value = ["/attachment/upload"], produces = ["application/json"])
         fun upload(@RequestParam file: MultipartFile, @RequestParam uploader: String): ResponseEntity<String> {
             val filename = file.originalFilename
             val hash: SecureHash = proxy.uploadAttachmentWithMetadata(jar = file.inputStream, uploader = uploader, filename = filename!!)
             return ResponseEntity.created(URI.create("attachments/$hash")).body("Attachment uploaded with hash - $hash")
         }
 
-    @PostMapping(value = "/attachment/upload/upload", produces = ["application/json"])
+    @PostMapping(value = ["/attachment/upload/upload"], produces = ["application/json"])
     private fun attachmentRegisterModel(@RequestBody attachmentRegisterModel: AttachmentRegisterModel) : ResponseEntity<Map<String,Any>> {
 
         val (status, result) = try {

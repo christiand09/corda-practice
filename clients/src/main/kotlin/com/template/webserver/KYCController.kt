@@ -29,7 +29,7 @@ class KYCController(
     /**
      * Return all UserAccountState
      */
-    @GetMapping(value = "/kyc/user", produces = ["application/json"])
+    @GetMapping(value = ["/kyc/user"], produces = ["application/json"])
     private fun KYCUserModels() : ResponseEntity<Map<String, Any>> {
         val (status, result ) = try {
             val requestStateRef = rpc.proxy.vaultQueryBy<KYCSpyState>().states
@@ -64,7 +64,7 @@ class KYCController(
      * REGISTER - UserAccountRegisterFlow
      */
 
-    @PostMapping(value = "/kyc/user/register", produces = ["application/json"])
+    @PostMapping(value = ["/kyc/user/register"], produces = ["application/json"])
     private fun KYCSpyRegister(): FlowHandle<SignedTransaction> {
         val flowReturn = proxy.startFlowDynamic(
 
@@ -79,7 +79,7 @@ class KYCController(
      * SELFISSUE - UserAccountVerifyFlow
      */
 
-    @PostMapping(value = "/kyc/user/selfIssue", produces = ["application/json"])
+    @PostMapping(value = ["/kyc/user/selfIssue"], produces = ["application/json"])
     private fun kycIssueModel(@RequestBody kycIssueModel: KYCIssueModel) : ResponseEntity<Map<String,Any>> {
 
         val (status, result) = try {
@@ -110,7 +110,7 @@ class KYCController(
      * KYCRequestModel - UserAccountVerifyFlow
      */
 
-    @PostMapping(value = "/kyc/user/request", produces = ["application/json"])
+    @PostMapping(value = ["/kyc/user/request"], produces = ["application/json"])
     private fun kycRequestModel(@RequestBody kycRequestModel: KYCRequestModel) : ResponseEntity<Map<String,Any>> {
 
         val (status, result) = try {
@@ -144,7 +144,7 @@ class KYCController(
      * KYCTransferModel - UserAccountVerifyFlow
      */
 
-    @PostMapping(value = "/kyc/user/transfer", produces = ["application/json"])
+    @PostMapping(value = ["/kyc/user/transfer"], produces = ["application/json"])
     private fun kycTransferModel(@RequestBody kycTransferModel: KYCTransferModel) : ResponseEntity<Map<String,Any>> {
 
         val (status, result) = try {
@@ -177,7 +177,7 @@ class KYCController(
      * KYCSettleModel - UserAccountVerifyFlow
      */
 
-    @PostMapping(value = "/kyc/user/settle", produces = ["application/json"])
+    @PostMapping(value = ["/kyc/user/settle"], produces = ["application/json"])
     private fun kycSettleModel(@RequestBody kycSettleModel: KYCSettleModel) : ResponseEntity<Map<String,Any>> {
 
         val (status, result) = try {

@@ -28,7 +28,7 @@ class MyAccountController(
     /**
      * Return all UserAccountState
      */
-    @GetMapping(value = "/my/user", produces = ["application/json"])
+    @GetMapping(value = ["/my/user"], produces = ["application/json"])
     private fun getUserAccountStates(): ResponseEntity<Map<String, Any>> {
         val (status, result) = try {
             val requestStateRef = rpc.proxy.vaultQueryBy<MyState>().states
@@ -59,7 +59,7 @@ class MyAccountController(
      * REGISTER - UserAccountRegisterFlow
      */
 
-    @PostMapping(value = "/my/user/create", produces = ["application/json"])
+    @PostMapping(value = ["/my/user/create"], produces = ["application/json"])
     private fun myModelRegister(@RequestBody myModelRegiser: MyModelRegister) : ResponseEntity<Map<String,Any>> {
 
         val (status, result) = try {
@@ -90,7 +90,7 @@ class MyAccountController(
      * VERIFY - UserAccountVerifyFlow
      */
 
-    @PostMapping(value = "/my/user/verify", produces = ["application/json"])
+    @PostMapping(value = ["/my/user/verify"], produces = ["application/json"])
     private fun myModelVerify(@RequestBody myModelVerify: MyModelVerify) : ResponseEntity<Map<String,Any>> {
 
         val (status, result) = try {
@@ -121,7 +121,7 @@ class MyAccountController(
      * Update - UserAccountUpdateFlow
      */
 
-    @PutMapping (value = "my/user/update", produces = ["application/json"])
+    @PutMapping (value = ["my/user/update"], produces = ["application/json"])
     private fun myModelUpdate (@RequestBody myModelUpdate: MyModelUpdate) : ResponseEntity <Map<String,Any>> {
 
         val (status, result) = try {
@@ -153,7 +153,7 @@ class MyAccountController(
      * UpdateRegister - UserAccountUpdateRegisterFlow
      */
 
-    @PutMapping (value = "my/user/updateRegister", produces = ["application/json"])
+    @PutMapping (value = ["my/user/updateRegister"], produces = ["application/json"])
     private fun myModelUpdateRegister (@RequestBody myModelUpdateRegister: MyModelUpdateRegister) : ResponseEntity <Map<String,Any>>{
 
         val (status, result) = try {
