@@ -29,7 +29,6 @@ dependencies {
     compile "org.slf4j:jul-to-slf4j:$slf4j_version"
 }
 
-
 springBoot {
     mainClassName = "com.template.webserver.ServerKt"
 }
@@ -48,7 +47,7 @@ task runTemplateClient(type: JavaExec, dependsOn: assemble) {
 task runPartyAServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'com.template.webserver.ServerKt'
-    args '--server.port=9090', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=postgres', '--config.rpc.password=admin'
+    args '--server.port=9090', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
 
 task runPartyBServer(type: JavaExec, dependsOn: assemble) {

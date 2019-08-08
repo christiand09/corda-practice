@@ -55,12 +55,10 @@ class CashRegisterFlow : CashFunctions()
 
     private fun register(PartyC: Party): TransactionBuilder =
             TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first()).apply {
-//                val ourTimeWindow = TimeWindow.fromStartAndDuration(serviceHub.clock.instant(), Duration.ofSeconds(10))
                 val stateWithAdmin = outState().copy(participants = outState().participants + PartyC)
                 val registerCommand = Command(WalletContract.Commands.Register(), ourIdentity.owningKey)
                 addOutputState(stateWithAdmin, WalletContract.WALLET_ID)
                 addCommand(registerCommand)
-//                setTimeWindow(ourTimeWindow)
     }
 }
 
