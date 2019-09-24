@@ -30,6 +30,7 @@ class VerifyUserFlow(val receiver: String,
         val spy = stringToPartySpy("PartyC")
         val spySession = initiateFlow(spy)
         spySession.send(false)
+
         val transaction: TransactionBuilder = transaction()
         val signedTransaction: SignedTransaction = verifyAndSign(transaction)
         val counterRef = stringToParty(receiver)
